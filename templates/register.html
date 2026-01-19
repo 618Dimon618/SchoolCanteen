@@ -1,0 +1,15 @@
+{% extends 'base.html'  %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block body %}
+<form method="POST" action="/register">
+    Имя: <input type="text" name="name">
+    <br>Фамилия:<input type="text" name="lname">
+    <br>Логин:<input type="text" name="login">
+    <br>Пароль:<input type="text" name="pass">
+    <br>Повтор пароля:<input type="text" name="povpass">
+    <br><button type="submit" name="butt" value="back">Назад</button>
+    <button type="submit" name="butt" value="zareg">Зарегистрироваться</button>
+</form>
+{% endblock %}
