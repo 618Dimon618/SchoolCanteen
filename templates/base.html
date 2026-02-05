@@ -1,13 +1,43 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>{% block title %}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Школьная столовая</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-{% block body %}{% endblock %}
+    <nav>
+        <div class="nav-brand">🍽️ Школьная столовая</div>
+        {% if session.get('user_id') %}
+        <div class="nav-links">
+            {% if session.get('role') == 'student' %}
+            <a href="{{ url_for('student') }}">Меню</a>
+            <a href="{{ url_for('profile') }}">Профиль</a>
+            <a href="{{ url_for('reviews') }}">Отзывы</a>
+            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+            {% elif session.get('role') == 'cook' %}
+            <a href="{{ url_for('cook') }}">Панель повара</a>
+            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+            {% elif session.get('role') == 'admin' %}
+            <a href="{{ url_for('admin') }}">Панель админа</a>
+            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Выйти</a>
+        </div>
+        {% endif %}
+    </nav>
+    <main>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for msg in messages %}
+            <div class="flash">{{ msg }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
 </body>
 </html>
