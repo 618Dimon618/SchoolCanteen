@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>Панель повара</h1>
+
+    <div class="section">
+        <h2>🍳 Блюда к приготовлению</h2>
+        {% if items_to_cook %}
+        <table>
+            <tr>
+                <th>Блюдо</th>
+                <th>Количество</th>
+                <th>Действие</th>
+            </tr>
+            {% for item_id, data in items_to_cook.items() %}
+            <tr>
+                <td>{{ data.item.name }}</td>
+                <td>{{ data.count }} шт.</td>
+                <td>
+                    {% for order_id in data.orders %}
+                    <a href="{{ url_for('prepare_order', order_id=order_id) }}" class="btn-small">Готово #{{ order_id }}</a>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>Все заказы приготовлены!</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>📦 Остатки продуктов</h2>
+        <table>
+            <tr>
+                <th>Продукт</th>
+                <th>Количество</th>
+                <th>Ед.</th>
+            </tr>
+            {% for product in products %}
+            <tr class="{% if product.quantity < 10 %}low-stock{% endif %}">
+                <td>{{ product.name }}</td>
+                <td>{{ product.quantity }}</td>
+                <td>{{ product.unit }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>📝 Создать заявку на закупку</h2>
+        <form method="POST" action="{{ url_for('add_request') }}" class="inline-form">
+            <select name="product_id" required>
+                <option value="">Выберите продукт</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="number" name="quantity" placeholder="Количество" min="1" required>
+            <button type="submit">Создать заявку</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>📋 Мои заявки</h2>
+        {% if my_requests %}
+        <table>
+            <tr>
+                <th>Дата</th>
+                <th>Продукт</th>
+                <th>Кол-во</th>
+                <th>Статус</th>
+            </tr>
+            {% for req in my_requests %}
+            <tr>
+                <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
+                <td>{{ req.product.name }}</td>
+                <td>{{ req.quantity }}</td>
+                <td>
+                    {% if req.status == 'pending' %}⏳ На рассмотрении
+                    {% elif req.status == 'approved' %}✅ Одобрена
+                    {% else %}❌ Отклонена{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>Заявок нет</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>Панель администратора</h1>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>💰 Прибыль</h3>
+            <p class="big-number">{{ stats.total_income }} ₽</p>
+            <small>Абонементы: {{ stats.subscriptions }}₽ | Покупки: {{ stats.purchases }}₽</small>
+        </div>
+        <div class="stat-card">
+            <h3>📉 Расходы</h3>
+            <p class="big-number">{{ expenses }} ₽</p>
+            <small>На закупку продуктов</small>
+        </div>
+        <div class="stat-card">
+            <h3>📊 Чистая прибыль</h3>
+            <p class="big-number {% if stats.total_income - expenses > 0 %}positive{% else %}negative{% endif %}">
+                {{ stats.total_income - expenses }} ₽
+            </p>
+        </div>
+        <div class="stat-card">
+            <h3>🍽️ Заказы</h3>
+            <p class="big-number">{{ order_stats.total }}</p>
+            <small>Сегодня: {{ order_stats.today }} | Получено: {{ order_stats.received }}</small>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>⏳ Заявки на рассмотрении</h2>
+        {% if pending %}
+        <table>
+            <tr>
+                <th>Дата</th>
+                <th>Продукт</th>
+                <th>Кол-во</th>
+                <th>Сумма</th>
+                <th>Действия</th>
+            </tr>
+            {% for req in pending %}
+            <tr>
+                <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
+                <td>{{ req.product.name }}</td>
+                <td>{{ req.quantity }} {{ req.product.unit }}</td>
+                <td>{{ (req.quantity * req.product.price)|round(2) }} ₽</td>
+                <td>
+                    <a href="{{ url_for('approve', req_id=req.id) }}" class="btn-small btn-success">Одобрить</a>
+                    <a href="{{ url_for('reject', req_id=req.id) }}" class="btn-small btn-danger">Отклонить</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>Нет заявок на рассмотрении</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>📋 Все заявки</h2>
+        {% if all_requests %}
+        <table>
+            <tr>
+                <th>Дата</th>
+                <th>Продукт</th>
+                <th>Кол-во</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+            </tr>
+            {% for req in all_requests %}
+            <tr>
+                <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
+                <td>{{ req.product.name }}</td>
+                <td>{{ req.quantity }} {{ req.product.unit }}</td>
+                <td>{{ (req.quantity * req.product.price)|round(2) }} ₽</td>
+                <td>
+                    {% if req.status == 'pending' %}⏳ На рассмотрении
+                    {% elif req.status == 'approved' %}✅ Одобрена
+                    {% else %}❌ Отклонена{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>Заявок нет</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>👥 Пользователи</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Логин</th>
+                <th>ФИО</th>
+                <th>Роль</th>
+                <th>Баланс</th>
+            </tr>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.username }}</td>
+                <td>{{ u.full_name or '-' }}</td>
+                <td>{{ u.role }}</td>
+                <td>{{ u.balance }} ₽</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

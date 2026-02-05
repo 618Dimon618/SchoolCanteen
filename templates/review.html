@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>⭐ Отзывы</h1>
+
+    <div class="section">
+        <h2>Оставить отзыв</h2>
+        <form method="POST" action="{{ url_for('add_review_route') }}" class="review-form">
+            <select name="menu_item_id" required>
+                <option value="">Выберите блюдо</option>
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="rating" required>
+                <option value="5">⭐⭐⭐⭐⭐ Отлично</option>
+                <option value="4">⭐⭐⭐⭐ Хорошо</option>
+                <option value="3">⭐⭐⭐ Нормально</option>
+                <option value="2">⭐⭐ Плохо</option>
+                <option value="1">⭐ Ужасно</option>
+            </select>
+            <textarea name="text" placeholder="Ваш отзыв..." rows="3"></textarea>
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>Все отзывы</h2>
+        {% if reviews %}
+        <div class="reviews-list">
+            {% for review in reviews %}
+            <div class="review-card">
+                <div class="review-header">
+                    <span class="review-item">{{ review.menu_item.name }}</span>
+                    <span class="review-rating">{{ '⭐' * review.rating }}</span>
+                </div>
+                <div class="review-text">{{ review.text }}</div>
+                <div class="review-footer">
+                    <span class="review-author">{{ review.user.full_name or review.user.username }}</span>
+                    <span class="review-date">{{ review.date.strftime('%d.%m.%Y') }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>Отзывов пока нет</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

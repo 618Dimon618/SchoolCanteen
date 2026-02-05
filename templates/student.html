@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>Привет, {{ user.full_name or user.username }}!</h1>
+
+    <div class="user-info">
+        <div class="info-card">
+            <h3>💰 Баланс: {{ user.balance }} руб.</h3>
+            <form method="POST" action="{{ url_for('add_balance_route') }}" class="inline-form">
+                <input type="number" name="amount" placeholder="Сумма" min="1" step="1" required>
+                <button type="submit">Пополнить</button>
+            </form>
+        </div>
+        <div class="info-card">
+            <h3>🎫 Абонементы</h3>
+            <p>Завтраки: {{ breakfast_sub.meals_left if breakfast_sub else 0 }}</p>
+            <p>Обеды: {{ lunch_sub.meals_left if lunch_sub else 0 }}</p>
+        </div>
+    </div>
+
+    <div class="subscription-buy">
+        <h3>Купить абонемент</h3>
+        <div class="sub-forms">
+            <form method="POST" action="{{ url_for('buy_subscription') }}" class="inline-form">
+                <input type="hidden" name="meal_type" value="breakfast">
+                <select name="count">
+                    <option value="5">5 завтраков (500₽)</option>
+                    <option value="20">20 завтраков (2000₽)</option>
+                </select>
+                <button type="submit">Купить</button>
+            </form>
+            <form method="POST" action="{{ url_for('buy_subscription') }}" class="inline-form">
+                <input type="hidden" name="meal_type" value="lunch">
+                <select name="count">
+                    <option value="5">5 обедов (750₽)</option>
+                    <option value="20">20 обедов (3000₽)</option>
+                </select>
+                <button type="submit">Купить</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="day-selector">
+        <h3>Выберите день</h3>
+        <div class="days">
+            {% for i in range(5) %}
+            <a href="?day={{ i }}" class="day-btn {% if selected_day == i %}active{% endif %}">{{ days[i] }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <h2>🌅 Завтрак ({{ days[selected_day] }})</h2>
+        {% if breakfast_menu %}
+        <form method="POST" action="{{ url_for('order') }}" class="order-form">
+            <input type="hidden" name="meal_type" value="breakfast">
+            {% for category, items in breakfast_menu.items() %}
+            <div class="category">
+                <h4>{{ category.name }}</h4>
+                <div class="items">
+                    {% for item in items %}
+                    {% set has_allergy = false %}
+                    {% set item_allergens = menu_allergies.get(item.id, []) %}
+                    {% for a in item_allergens %}
+                        {% if a.id in user_allergies %}
+                            {% set has_allergy = true %}
+                        {% endif %}
+                    {% endfor %}
+                    <label class="item {% if has_allergy %}has-allergy{% endif %}">
+                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}"
+                            onchange="updateItems(this, {{ item.id }})">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-price">{{ item.price }}₽</span>
+                        {% if item_allergens %}
+                        <span class="allergens">⚠️
+                            {% for a in item_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        </span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="order-options">
+                <label>
+                    <input type="checkbox" name="use_subscription" value="1" id="sub_breakfast"
+                        {% if not breakfast_sub or breakfast_sub.meals_left < 1 %}disabled{% endif %}>
+                    Использовать абонемент (осталось: {{ breakfast_sub.meals_left if breakfast_sub else 0 }})
+                </label>
+            </div>
+            <div id="selected_items_breakfast"></div>
+            <button type="submit" class="order-btn">Заказать завтрак</button>
+        </form>
+        {% else %}
+        <p>Меню на этот день пока не добавлено</p>
+        {% endif %}
+    </div>
+
+    <div class="menu-section">
+        <h2>🍽️ Обед ({{ days[selected_day] }})</h2>
+        {% if lunch_menu %}
+        <form method="POST" action="{{ url_for('order') }}" class="order-form">
+            <input type="hidden" name="meal_type" value="lunch">
+            {% for category, items in lunch_menu.items() %}
+            <div class="category">
+                <h4>{{ category.name }}</h4>
+                <div class="items">
+                    {% for item in items %}
+                    {% set has_allergy = false %}
+                    {% set item_allergens = menu_allergies.get(item.id, []) %}
+                    {% for a in item_allergens %}
+                        {% if a.id in user_allergies %}
+                            {% set has_allergy = true %}
+                        {% endif %}
+                    {% endfor %}
+                    <label class="item {% if has_allergy %}has-allergy{% endif %}">
+                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}"
+                            onchange="updateItems(this, {{ item.id }})">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-price">{{ item.price }}₽</span>
+                        {% if item_allergens %}
+                        <span class="allergens">⚠️
+                            {% for a in item_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        </span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="order-options">
+                <label>
+                    <input type="checkbox" name="use_subscription" value="1" id="sub_lunch"
+                        {% if not lunch_sub or lunch_sub.meals_left < 1 %}disabled{% endif %}>
+                    Использовать абонемент (осталось: {{ lunch_sub.meals_left if lunch_sub else 0 }})
+                </label>
+            </div>
+            <div id="selected_items_lunch"></div>
+            <button type="submit" class="order-btn">Заказать обед</button>
+        </form>
+        {% else %}
+        <p>Меню на этот день пока не добавлено</p>
+        {% endif %}
+    </div>
+
+    <div class="orders-section">
+        <h2>📋 Мои заказы</h2>
+        {% if orders %}
+        <table>
+            <tr>
+                <th>Дата</th>
+                <th>Тип</th>
+                <th>Способ</th>
+                <th>Статус</th>
+                <th>Действие</th>
+            </tr>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.date }}</td>
+                <td>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</td>
+                <td>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</td>
+                <td>
+                    {% if order.is_received %}
+                    ✅ Получен
+                    {% elif order.is_prepared %}
+                    🍳 Готов
+                    {% else %}
+                    ⏳ Готовится
+                    {% endif %}
+                </td>
+                <td>
+                    {% if order.is_prepared and not order.is_received %}
+                    <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small">Получить</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>Заказов пока нет</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function updateItems(radio, itemId) {
+    var form = radio.closest('form');
+    var container = form.querySelector('[id^="selected_items"]');
+    var existingInput = container.querySelector('input[value="' + itemId + '"]');
+
+    if (!existingInput) {
+        var categoryInputs = container.querySelectorAll('input[data-category="' + radio.name + '"]');
+        categoryInputs.forEach(function(inp) { inp.remove(); });
+
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'items';
+        input.value = itemId;
+        input.dataset.category = radio.name;
+        container.appendChild(input);
+    }
+}
+</script>
+{% endblock %}

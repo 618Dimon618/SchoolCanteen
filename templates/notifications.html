@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>🔔 Уведомления</h1>
+    
+    {% if notifications %}
+    <div class="notifications-list">
+        {% for notif in notifications %}
+        <div class="notification {% if not notif.is_read %}unread{% endif %}">
+            <div class="notif-text">{{ notif.text }}</div>
+            <div class="notif-date">{{ notif.date.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Уведомлений нет</p>
+    {% endif %}
+    
+    <a href="{{ url_for('index') }}" class="btn">Назад</a>
+</div>
+{% endblock %}
