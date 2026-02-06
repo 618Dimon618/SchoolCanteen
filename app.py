@@ -122,13 +122,21 @@ def order():
         return redirect(url_for('student'))
 
     if use_sub:
+        # проверяем, что в этот день по абонементу ещё не было заказа для этого приёма пищи
+        from db_functions import get_subscription_orders_count_for_day
+        today = date.today()
+        already_sub_orders = get_subscription_orders_count_for_day(user.id, meal_type, today)
+        if already_sub_orders >= 1:
+            flash('На сегодня по абонементу уже оформлен заказ для этого приёма пищи.')
+            return redirect(url_for('student'))
+
         sub = get_subscription(user.id, meal_type)
         if not sub or sub.meals_left < 1:
             flash('Нет абонемента')
             return redirect(url_for('student'))
         use_subscription(user.id, meal_type)
         order_obj, total = create_order(user.id, meal_type, item_ids, is_subscription=True)
-        add_notification(user.id, f'Заказ по абонементу оформлен. Осталось: {sub.meals_left - 1}')
+        add_notification(user.id, f'Заказ по абонементу оформлен. Осталось: {sub.meals_left}')
     else:
         items = [MenuItem.query.get(i) for i in item_ids]
         total = sum(i.price for i in items if i)
@@ -233,7 +241,7 @@ def reviews():
     user = get_user_by_id(session['user_id'])
     all_reviews = get_all_reviews()
     items = MenuItem.query.all()
-    return render_template('reviews.html', user=user, reviews=all_reviews, items=items)
+    return render_template('review.html', user=user, reviews=all_reviews, items=items)
 
 
 @app.route('/add_review', methods=['POST'])

@@ -340,3 +340,15 @@ def get_expenses():
         if prod:
             total += req.quantity * prod.price
     return total
+
+
+def get_subscription_orders_count_for_day(user_id, meal_type, day=None):
+    """Сколько заказов по абонементу у пользователя за указанный день и тип приёма пищи."""
+    if day is None:
+        day = date.today()
+    return Order.query.filter_by(
+        user_id=user_id,
+        date=day,
+        meal_type=meal_type,
+        is_subscription=True
+    ).count()
