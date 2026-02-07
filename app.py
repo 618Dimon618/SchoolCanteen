@@ -252,6 +252,13 @@ def add_review_route():
     text = request.form.get('text')
     rating = int(request.form.get('rating', 5))
     add_review(session['user_id'], menu_item_id, text, rating)
+
+    item = MenuItem.query.get(menu_item_id)
+    user = get_user_by_id(session['user_id'])
+    cooks = User.query.filter_by(role='cook').all()
+    for c in cooks:
+        add_notification(c.id, f'Новый отзыв на "{item.name}" от {user.full_name or user.username}: {"⭐" * rating}')
+
     flash('Отзыв добавлен!')
     return redirect(url_for('reviews'))
 
@@ -263,39 +270,39 @@ def cook():
     user = get_user_by_id(session['user_id'])
     orders = get_orders_to_prepare()
 
-    items_to_cook = {}
+    from models import MenuItemIngredient
+    order_ingredients = {}
     for order in orders:
-        order_items = get_order_items(order.id)
-        for oi in order_items:
-            item = oi.menu_item
-            if item.id not in items_to_cook:
-                items_to_cook[item.id] = {'item': item, 'count': 0, 'orders': []}
-            items_to_cook[item.id]['count'] += 1
-            items_to_cook[item.id]['orders'].append(order.id)
+        for oi in order.items:
+            if oi.menu_item.id not in order_ingredients:
+                ings = MenuItemIngredient.query.filter_by(menu_item_id=oi.menu_item.id).all()
+                order_ingredients[oi.menu_item.id] = ings
 
     products = get_all_products()
     my_requests = PurchaseRequest.query.filter_by(created_by=user.id).order_by(PurchaseRequest.date.desc()).all()
     unread = get_unread_notifications(user.id)
 
     return render_template('cook.html',
-                           user=user,
-                           orders=orders,
-                           items_to_cook=items_to_cook,
-                           products=products,
-                           my_requests=my_requests,
-                           unread_count=len(unread)
-                           )
-
-
+        user=user,
+        orders=orders,
+        order_ingredients=order_ingredients,
+        products=products,
+        my_requests=my_requests,
+        unread_count=len(unread)
+    )
 @app.route('/prepare_order/<int:order_id>')
 def prepare_order(order_id):
     if 'user_id' not in session or session.get('role') != 'cook':
         return redirect(url_for('login'))
-    if mark_order_prepared(order_id):
-        order = Order.query.get(order_id)
-        if order:
-            add_notification(order.user_id, 'Ваш заказ готов! Можете получить.')
-        flash('Заказ приготовлен!')
+    order = Order.query.get(order_id)
+    if order and not order.is_prepared:
+        if mark_order_prepared(order_id):
+            add_notification(order.user_id, f'Ваш заказ #{order.id} готов к выдаче! Можете получить.')
+            flash('Заказ готов к выдаче!')
+        else:
+            flash('Ошибка при подготовке заказа')
+    else:
+        flash('Заказ уже приготовлен или не найден')
     return redirect(url_for('cook'))
 
 
