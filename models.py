@@ -77,6 +77,7 @@ class Order(db.Model):
     is_received = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     user = db.relationship('User', backref='orders')
+    items = db.relationship('OrderItem', backref='order', lazy=True)
 
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
