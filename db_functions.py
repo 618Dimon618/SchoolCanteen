@@ -188,7 +188,7 @@ def mark_order_prepared(order_id):
             for ing in ingredients:
                 prod = Product.query.get(ing.product_id)
                 if prod:
-                    prod.quantity = max(0, prod.quantity - ing.quantity)
+                    prod.quantity = round(max(0, prod.quantity - ing.quantity), 2)
         db.session.commit()
         return True
     return False
