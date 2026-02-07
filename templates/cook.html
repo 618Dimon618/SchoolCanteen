@@ -4,26 +4,50 @@
     <h1>Панель повара</h1>
 
     <div class="section">
-        <h2>🍳 Блюда к приготовлению</h2>
-        {% if items_to_cook %}
-        <table>
-            <tr>
-                <th>Блюдо</th>
-                <th>Количество</th>
-                <th>Действие</th>
-            </tr>
-            {% for item_id, data in items_to_cook.items() %}
-            <tr>
-                <td>{{ data.item.name }}</td>
-                <td>{{ data.count }} шт.</td>
-                <td>
-                    {% for order_id in data.orders %}
-                    <a href="{{ url_for('prepare_order', order_id=order_id) }}" class="btn-small">Готово #{{ order_id }}</a>
+        <h2>🍳 Заказы к приготовлению</h2>
+        {% if orders %}
+        {% for order in orders %}
+        <div class="cook-order-card">
+            <div class="cook-order-header">
+                <span class="cook-order-icon">📋 Заказ #{{ order.id }}</span>
+                <span>{{ order.user.full_name or order.user.username }}</span>
+                <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
+                <span>{{ order.date }}</span>
+                <a href="{{ url_for('prepare_order', order_id=order.id) }}" class="btn-small btn-success">✅ Готово к выдаче</a>
+            </div>
+            {% for oi in order.items %}
+            <div class="cook-dish-block">
+                <div class="cook-dish-name">🍽️ {{ oi.menu_item.name }}</div>
+                {% set ingredients = order_ingredients.get(oi.menu_item.id, []) %}
+                {% if ingredients %}
+                <div class="cook-ingredients">
+                    {% for ing in ingredients %}
+                    <span class="ingredient-tag">{{ ing.product.name }}:
+                        {% if ing.product.unit == 'шт' %}
+                            {{ ing.quantity | int }} шт
+                        {% elif ing.product.unit == 'кг' %}
+                            {% if ing.quantity >= 1 %}
+                                {{ ing.quantity | round(2) }} кг
+                            {% else %}
+                                {{ (ing.quantity * 1000) | round(0) | int }} г
+                            {% endif %}
+                        {% elif ing.product.unit == 'л' %}
+                            {% if ing.quantity >= 1 %}
+                                {{ ing.quantity | round(2) }} л
+                            {% else %}
+                                {{ (ing.quantity * 1000) | round(0) | int }} мл
+                            {% endif %}
+                        {% else %}
+                            {{ ing.quantity | round(2) }} {{ ing.product.unit }}
+                        {% endif %}
+                    </span>
                     {% endfor %}
-                </td>
-            </tr>
+                </div>
+                {% endif %}
+            </div>
             {% endfor %}
-        </table>
+        </div>
+        {% endfor %}
         {% else %}
         <p>Все заказы приготовлены!</p>
         {% endif %}
@@ -40,7 +64,13 @@
             {% for product in products %}
             <tr class="{% if product.quantity < 10 %}low-stock{% endif %}">
                 <td>{{ product.name }}</td>
-                <td>{{ product.quantity }}</td>
+                <td>
+                    {% if product.unit == 'шт' %}
+                        {{ product.quantity | round(0) | int }}
+                    {% else %}
+                        {{ product.quantity | round(2) }}
+                    {% endif %}
+                </td>
                 <td>{{ product.unit }}</td>
             </tr>
             {% endfor %}
