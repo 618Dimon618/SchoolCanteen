@@ -515,3 +515,91 @@ tr:hover {
     font-size: 12px;
     color: #7f8c8d;
 }
+.order-card {
+    background: #ecf0f1;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.order-header-info {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.order-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.order-item-tag {
+    background: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+}
+.order-total-tag {
+    background: #27ae60;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.cook-order-card {
+    background: #ecf0f1;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.cook-order-header {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.cook-order-icon {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.cook-order-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.cook-dish-block {
+    background: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.cook-dish-name {
+    font-weight: bold;
+    margin-bottom: 6px;
+    font-size: 15px;
+}
+
+.cook-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ingredient-tag {
+    background: #f0f0f0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #555;
+}
