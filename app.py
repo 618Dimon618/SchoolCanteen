@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, MenuItem, Category, Order, OrderItem, Notification
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response
+from models import db, User, MenuItem, Category, Order, OrderItem, Notification, PurchaseRequest, MenuItemIngredient
 from db_functions import *
 from datetime import date, timedelta
 
@@ -8,9 +8,20 @@ app.secret_key = 'school_canteen_secret_key_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///canteen.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
-
+@app.before_request
+def check_session():
+    public_routes = ['login', 'register', 'static']
+    if request.endpoint and request.endpoint not in public_routes:
+        if 'user_id' not in session and request.endpoint != 'index':
+            return redirect(url_for('login'))
 DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
 
+@app.after_request
+def add_no_cache(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 @app.route('/')
 def index():
@@ -25,7 +36,6 @@ def index():
                 return redirect(url_for('admin'))
     return redirect(url_for('login'))
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -33,12 +43,14 @@ def login():
         password = request.form.get('password')
         user = get_user(username)
         if user and user.check_password(password):
+            if not user.is_approved:
+                flash('Ваш аккаунт ещё не подтверждён администратором')
+                return render_template('login.html')
             session['user_id'] = user.id
             session['role'] = user.role
             return redirect(url_for('index'))
         flash('Неверный логин или пароль')
     return render_template('login.html')
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -51,16 +63,22 @@ def register():
             flash('Пользователь уже существует')
         else:
             add_user(username, password, 'student', full_name, class_name)
-            flash('Регистрация успешна')
+            admins = User.query.filter_by(role='admin').all()
+            for a in admins:
+                add_notification(a.id, f'Новая заявка на регистрацию: {full_name} ({username})')
+            flash('Заявка на регистрацию отправлена. Дождитесь подтверждения администратора.')
             return redirect(url_for('login'))
     return render_template('register.html')
-
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
-
+    response = make_response(redirect(url_for('login')))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    response.delete_cookie('session')
+    return response
 
 @app.route('/student')
 def student():
@@ -91,21 +109,23 @@ def student():
         item_allergies = get_menu_item_allergies(item.id)
         menu_allergies[item.id] = item_allergies
 
-    return render_template('student.html',
-                           user=user,
-                           breakfast_menu=breakfast_menu,
-                           lunch_menu=lunch_menu,
-                           selected_day=selected_day,
-                           meal_type=meal_type,
-                           days=DAYS,
-                           user_allergies=user_allergies,
-                           menu_allergies=menu_allergies,
-                           breakfast_sub=breakfast_sub,
-                           lunch_sub=lunch_sub,
-                           orders=orders,
-                           unread_count=len(unread)
-                           )
+    sub_prices = {'breakfast': 100, 'lunch': 150}
 
+    return render_template('student.html',
+        user=user,
+        breakfast_menu=breakfast_menu,
+        lunch_menu=lunch_menu,
+        selected_day=selected_day,
+        meal_type=meal_type,
+        days=DAYS,
+        user_allergies=user_allergies,
+        menu_allergies=menu_allergies,
+        breakfast_sub=breakfast_sub,
+        lunch_sub=lunch_sub,
+        orders=orders,
+        unread_count=len(unread),
+        sub_prices=sub_prices
+    )
 
 @app.route('/order', methods=['POST'])
 def order():
@@ -122,7 +142,6 @@ def order():
         return redirect(url_for('student'))
 
     if use_sub:
-        # проверяем, что в этот день по абонементу ещё не было заказа для этого приёма пищи
         from db_functions import get_subscription_orders_count_for_day
         today = date.today()
         already_sub_orders = get_subscription_orders_count_for_day(user.id, meal_type, today)
@@ -136,7 +155,9 @@ def order():
             return redirect(url_for('student'))
         use_subscription(user.id, meal_type)
         order_obj, total = create_order(user.id, meal_type, item_ids, is_subscription=True)
-        add_notification(user.id, f'Заказ по абонементу оформлен. Осталось: {sub.meals_left}')
+        prices = {'breakfast': 100, 'lunch': 150}
+        sub_price = prices.get(meal_type, 100)
+        add_notification(user.id, f'Заказ по абонементу оформлен ({sub_price}₽). Осталось: {sub.meals_left}')
     else:
         items = [MenuItem.query.get(i) for i in item_ids]
         total = sum(i.price for i in items if i)
@@ -150,7 +171,6 @@ def order():
 
     flash('Заказ оформлен!')
     return redirect(url_for('student'))
-
 
 @app.route('/buy_subscription', methods=['POST'])
 def buy_subscription():
@@ -173,7 +193,6 @@ def buy_subscription():
     flash(f'Абонемент на {count} приёмов куплен!')
     return redirect(url_for('student'))
 
-
 @app.route('/add_balance', methods=['POST'])
 def add_balance_route():
     if 'user_id' not in session:
@@ -185,7 +204,6 @@ def add_balance_route():
         flash(f'Баланс пополнен на {amount} руб.')
     return redirect(url_for('student'))
 
-
 @app.route('/receive_order/<int:order_id>')
 def receive_order(order_id):
     if 'user_id' not in session:
@@ -195,7 +213,6 @@ def receive_order(order_id):
     else:
         flash('Ошибка получения заказа')
     return redirect(url_for('student'))
-
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -211,7 +228,6 @@ def profile():
     user_allergies = get_user_allergy_ids(user.id)
     return render_template('profile.html', user=user, allergies=allergies, user_allergies=user_allergies)
 
-
 @app.route('/toggle_allergy/<int:allergy_id>')
 def toggle_allergy(allergy_id):
     if 'user_id' not in session:
@@ -223,7 +239,6 @@ def toggle_allergy(allergy_id):
         add_user_allergy(session['user_id'], allergy_id)
     return redirect(url_for('profile'))
 
-
 @app.route('/notifications')
 def notifications():
     if 'user_id' not in session:
@@ -233,7 +248,6 @@ def notifications():
     user = get_user_by_id(session['user_id'])
     return render_template('notifications.html', notifications=notifs, user=user)
 
-
 @app.route('/reviews')
 def reviews():
     if 'user_id' not in session:
@@ -242,7 +256,6 @@ def reviews():
     all_reviews = get_all_reviews()
     items = MenuItem.query.all()
     return render_template('review.html', user=user, reviews=all_reviews, items=items)
-
 
 @app.route('/add_review', methods=['POST'])
 def add_review_route():
@@ -262,7 +275,6 @@ def add_review_route():
     flash('Отзыв добавлен!')
     return redirect(url_for('reviews'))
 
-
 @app.route('/cook')
 def cook():
     if 'user_id' not in session or session.get('role') != 'cook':
@@ -270,7 +282,6 @@ def cook():
     user = get_user_by_id(session['user_id'])
     orders = get_orders_to_prepare()
 
-    from models import MenuItemIngredient
     order_ingredients = {}
     for order in orders:
         for oi in order.items:
@@ -290,6 +301,7 @@ def cook():
         my_requests=my_requests,
         unread_count=len(unread)
     )
+
 @app.route('/prepare_order/<int:order_id>')
 def prepare_order(order_id):
     if 'user_id' not in session or session.get('role') != 'cook':
@@ -305,7 +317,6 @@ def prepare_order(order_id):
         flash('Заказ уже приготовлен или не найден')
     return redirect(url_for('cook'))
 
-
 @app.route('/add_request', methods=['POST'])
 def add_request():
     if 'user_id' not in session or session.get('role') != 'cook':
@@ -315,7 +326,6 @@ def add_request():
     add_purchase_request(product_id, quantity, session['user_id'])
     flash('Заявка создана!')
     return redirect(url_for('cook'))
-
 
 @app.route('/admin')
 def admin():
@@ -328,19 +338,20 @@ def admin():
     pending = get_pending_requests()
     all_requests = get_all_requests()
     users = User.query.all()
+    pending_users = User.query.filter_by(is_approved=False).all()
     unread = get_unread_notifications(user.id)
 
     return render_template('admin.html',
-                           user=user,
-                           stats=stats,
-                           order_stats=order_stats,
-                           expenses=expenses,
-                           pending=pending,
-                           all_requests=all_requests,
-                           users=users,
-                           unread_count=len(unread)
-                           )
-
+        user=user,
+        stats=stats,
+        order_stats=order_stats,
+        expenses=expenses,
+        pending=pending,
+        all_requests=all_requests,
+        users=users,
+        pending_users=pending_users,
+        unread_count=len(unread)
+    )
 
 @app.route('/approve/<int:req_id>')
 def approve(req_id):
@@ -352,7 +363,6 @@ def approve(req_id):
         add_notification(req.created_by, f'Заявка на {req.product.name} одобрена!')
     return redirect(url_for('admin'))
 
-
 @app.route('/reject/<int:req_id>')
 def reject(req_id):
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -363,6 +373,28 @@ def reject(req_id):
         add_notification(req.created_by, f'Заявка на {req.product.name} отклонена')
     return redirect(url_for('admin'))
 
+@app.route('/approve_user/<int:user_id>')
+def approve_user(user_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    u = User.query.get(user_id)
+    if u and not u.is_approved:
+        u.is_approved = True
+        db.session.commit()
+        add_notification(u.id, 'Ваш аккаунт подтверждён! Теперь вы можете войти в систему.')
+        flash(f'Пользователь {u.full_name or u.username} подтверждён')
+    return redirect(url_for('admin'))
+
+@app.route('/reject_user/<int:user_id>')
+def reject_user(user_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    u = User.query.get(user_id)
+    if u and not u.is_approved:
+        db.session.delete(u)
+        db.session.commit()
+        flash(f'Заявка на регистрацию отклонена')
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
