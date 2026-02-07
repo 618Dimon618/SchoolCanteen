@@ -42,7 +42,6 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
-    <script src="{{ url_for('static', filename='student.js') }}"></script>
     <script>
         if (window.performance && window.performance.navigation.type === 2) {
             window.location.reload();
