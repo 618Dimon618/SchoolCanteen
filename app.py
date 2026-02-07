@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, Response
 from models import db, User, MenuItem, Category, Order, OrderItem, Notification, PurchaseRequest, MenuItemIngredient
 from db_functions import *
 from datetime import date, timedelta
@@ -8,12 +8,14 @@ app.secret_key = 'school_canteen_secret_key_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///canteen.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
 @app.before_request
 def check_session():
     public_routes = ['login', 'register', 'static']
     if request.endpoint and request.endpoint not in public_routes:
         if 'user_id' not in session and request.endpoint != 'index':
             return redirect(url_for('login'))
+
 DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
 
 @app.after_request
@@ -134,8 +136,13 @@ def order():
     user = get_user_by_id(session['user_id'])
     meal_type = request.form.get('meal_type')
     use_sub = request.form.get('use_subscription') == '1'
-    item_ids = request.form.getlist('items')
-    item_ids = [int(i) for i in item_ids if i]
+
+    item_ids = []
+    for key in request.form:
+        if key.startswith('cat_'):
+            val = request.form.get(key)
+            if val:
+                item_ids.append(int(val))
 
     if not item_ids:
         flash('Выберите блюда')
@@ -283,8 +290,8 @@ def cook():
     orders = get_orders_to_prepare()
 
     order_ingredients = {}
-    for order in orders:
-        for oi in order.items:
+    for o in orders:
+        for oi in o.items:
             if oi.menu_item.id not in order_ingredients:
                 ings = MenuItemIngredient.query.filter_by(menu_item_id=oi.menu_item.id).all()
                 order_ingredients[oi.menu_item.id] = ings
@@ -306,10 +313,10 @@ def cook():
 def prepare_order(order_id):
     if 'user_id' not in session or session.get('role') != 'cook':
         return redirect(url_for('login'))
-    order = Order.query.get(order_id)
-    if order and not order.is_prepared:
+    o = Order.query.get(order_id)
+    if o and not o.is_prepared:
         if mark_order_prepared(order_id):
-            add_notification(order.user_id, f'Ваш заказ #{order.id} готов к выдаче! Можете получить.')
+            add_notification(o.user_id, f'Ваш заказ #{o.id} готов к выдаче! Можете получить.')
             flash('Заказ готов к выдаче!')
         else:
             flash('Ошибка при подготовке заказа')
@@ -396,5 +403,95 @@ def reject_user(user_id):
         flash(f'Заявка на регистрацию отклонена')
     return redirect(url_for('admin'))
 
+@app.route('/download_report')
+def download_report():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    from io import StringIO
+    import csv
+    from datetime import datetime
+
+    stats = get_payments_stats()
+    order_stats = get_orders_stats()
+    expenses = get_expenses()
+    all_requests_list = get_all_requests()
+    users = User.query.all()
+    all_orders = Order.query.order_by(Order.created_at.desc()).all()
+
+    output = StringIO()
+    writer = csv.writer(output, delimiter=';')
+
+    writer.writerow(['Отчёт по школьной столовой'])
+    writer.writerow(['Дата формирования', datetime.now().strftime('%d.%m.%Y %H:%M')])
+    writer.writerow([])
+
+    writer.writerow(['Финансы'])
+    writer.writerow(['Показатель', 'Сумма (руб.)'])
+    writer.writerow(['Доход от абонементов', f'{stats["subscriptions"]:.2f}'])
+    writer.writerow(['Доход от покупок', f'{stats["purchases"]:.2f}'])
+    writer.writerow(['Общий доход', f'{stats["total_income"]:.2f}'])
+    writer.writerow(['Расходы на закупки', f'{expenses:.2f}'])
+    writer.writerow(['Чистая прибыль', f'{stats["total_income"] - expenses:.2f}'])
+    writer.writerow([])
+
+    writer.writerow(['Статистика заказов'])
+    writer.writerow(['Показатель', 'Значение'])
+    writer.writerow(['Всего заказов', order_stats['total']])
+    writer.writerow(['Заказов за сегодня', order_stats['today']])
+    writer.writerow(['Получено', order_stats['received']])
+    writer.writerow([])
+
+    writer.writerow(['Заказы'])
+    writer.writerow(['№', 'Дата', 'Ученик', 'Приём пищи', 'Оплата', 'Блюда', 'Статус'])
+    for o in all_orders:
+        items_str = ', '.join([oi.menu_item.name for oi in o.items])
+        meal = 'Завтрак' if o.meal_type == 'breakfast' else 'Обед'
+        payment = 'Абонемент' if o.is_subscription else 'Разовая'
+        if o.is_received:
+            status = 'Получен'
+        elif o.is_prepared:
+            status = 'Готов'
+        else:
+            status = 'Готовится'
+        writer.writerow([o.id, o.date.strftime('%d.%m.%Y'), o.user.full_name or o.user.username, meal, payment, items_str, status])
+    writer.writerow([])
+
+    writer.writerow(['Заявки на закупку'])
+    writer.writerow(['Дата', 'Продукт', 'Количество', 'Ед.', 'Сумма (руб.)', 'Статус'])
+    for req in all_requests_list:
+        status_map = {'pending': 'Ожидает', 'approved': 'Одобрена', 'rejected': 'Отклонена'}
+        writer.writerow([
+            req.date.strftime('%d.%m.%Y'),
+            req.product.name,
+            req.quantity,
+            req.product.unit,
+            f'{req.quantity * req.product.price:.2f}',
+            status_map.get(req.status, req.status)
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Пользователи'])
+    writer.writerow(['ID', 'Логин', 'ФИО', 'Класс', 'Роль', 'Баланс (руб.)', 'Статус'])
+    for u in users:
+        role_map = {'student': 'Ученик', 'cook': 'Повар', 'admin': 'Администратор'}
+        writer.writerow([
+            u.id,
+            u.username,
+            u.full_name or '-',
+            u.class_name or '-',
+            role_map.get(u.role, u.role),
+            f'{u.balance:.2f}',
+            'Подтверждён' if u.is_approved else 'Ожидает'
+        ])
+
+    content = output.getvalue()
+    output.close()
+
+    return Response(
+        '\ufeff' + content,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=report.csv'}
+    )
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
