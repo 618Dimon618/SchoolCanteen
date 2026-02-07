@@ -161,12 +161,10 @@
             </div>
             <div class="order-items-list">
                 {% if order.is_subscription %}
-                    {% set ns = namespace(total=0) %}
                     {% for oi in order.items %}
-                        {% set ns.total = ns.total + oi.price %}
                         <span class="order-item-tag">{{ oi.menu_item.name }}</span>
                     {% endfor %}
-                    <span class="order-total-tag">Оплачено: {{ ns.total }}₽ (абонемент)</span>
+                    <span class="order-total-tag">{{ sub_prices.get(order.meal_type, 100) }}₽ (абонемент)</span>
                 {% else %}
                     {% set ns = namespace(total=0) %}
                     {% for oi in order.items %}

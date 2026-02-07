@@ -27,6 +27,31 @@
         </div>
     </div>
 
+    {% if pending_users %}
+    <div class="section">
+        <h2>👤 Заявки на регистрацию</h2>
+        <table>
+            <tr>
+                <th>Логин</th>
+                <th>ФИО</th>
+                <th>Класс</th>
+                <th>Действия</th>
+            </tr>
+            {% for u in pending_users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.full_name or '-' }}</td>
+                <td>{{ u.class_name or '-' }}</td>
+                <td>
+                    <a href="{{ url_for('approve_user', user_id=u.id) }}" class="btn-small btn-success">Подтвердить</a>
+                    <a href="{{ url_for('reject_user', user_id=u.id) }}" class="btn-small btn-danger">Отклонить</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
     <div class="section">
         <h2>⏳ Заявки на рассмотрении</h2>
         {% if pending %}
@@ -95,14 +120,16 @@
                 <th>ФИО</th>
                 <th>Роль</th>
                 <th>Баланс</th>
+                <th>Статус</th>
             </tr>
             {% for u in users %}
             <tr>
                 <td>{{ u.id }}</td>
                 <td>{{ u.username }}</td>
                 <td>{{ u.full_name or '-' }}</td>
-                <td>{{ u.role }}</td>
+                <td>{% if u.role == 'student' %}Ученик{% elif u.role == 'cook' %}Повар{% elif u.role == 'admin' %}Администратор{% else %}{{ u.role }}{% endif %}</td>
                 <td>{{ u.balance }} ₽</td>
+                <td>{% if u.is_approved %}✅{% else %}⏳{% endif %}</td>
             </tr>
             {% endfor %}
         </table>

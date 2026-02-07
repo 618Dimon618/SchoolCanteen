@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Школьная столовая</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -39,6 +42,16 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
-<script src="{{ url_for('static', filename='student.js') }}"></script>
+    <script src="{{ url_for('static', filename='student.js') }}"></script>
+    <script>
+        if (window.performance && window.performance.navigation.type === 2) {
+            window.location.reload();
+        }
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -6,9 +6,10 @@
         <input type="text" name="username" placeholder="Логин" required>
         <input type="password" name="password" placeholder="Пароль" required>
         <input type="text" name="full_name" placeholder="ФИО">
-        <input type="text" name="class_name" placeholder="Класс (например, 9А)">
-        <button type="submit">Зарегистрироваться</button>
+        <input type="text" name="class_name" placeholder="Класс (например: 9А)">
+        <button type="submit">Отправить заявку</button>
     </form>
     <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+    <p><small>После регистрации ваш аккаунт должен быть подтверждён администратором</small></p>
 </div>
 {% endblock %}
