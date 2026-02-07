@@ -7,6 +7,10 @@ from datetime import datetime, date
 def add_user(username, password, role, full_name='', class_name=''):
     user = User(username=username, role=role, full_name=full_name, class_name=class_name)
     user.set_password(password)
+    if role in ('admin', 'cook'):
+        user.is_approved = True
+    else:
+        user.is_approved = False
     db.session.add(user)
     db.session.commit()
     return user

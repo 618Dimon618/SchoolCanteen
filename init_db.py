@@ -17,6 +17,8 @@ with app.app_context():
     admin = add_user('admin', 'admin123', 'admin', 'Администратор', '')
     cook = add_user('cook', 'cook123', 'cook', 'Повар Иванов', '')
     student = add_user('student1', 'student123', 'student', 'Петров Иван', '9А')
+    student.is_approved = True
+    db.session.commit()
 
     milk = add_allergy('Молоко')
     gluten = add_allergy('Глютен')

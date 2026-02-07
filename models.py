@@ -12,6 +12,7 @@ class User(db.Model):
     balance = db.Column(db.Float, default=0)
     full_name = db.Column(db.String(100), default='')
     class_name = db.Column(db.String(20), default='')
+    is_approved = db.Column(db.Boolean, default=False)
 
     def set_password(self, pwd):
         self.password = generate_password_hash(pwd)
