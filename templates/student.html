@@ -62,20 +62,19 @@
                     {% for item in items %}
                     {% set has_allergy = false %}
                     {% set item_allergens = menu_allergies.get(item.id, []) %}
+                    {% set matching_allergens = [] %}
                     {% for a in item_allergens %}
-                        {% if a.id in user_allergies %}
-                            {% set has_allergy = true %}
-                        {% endif %}
+                    {% if a.id in user_allergies %}
+                    {% set has_allergy = true %}
+                    {% if matching_allergens.append(a) %}{% endif %}
+                    {% endif %}
                     {% endfor %}
                     <label class="item {% if has_allergy %}has-allergy{% endif %}">
-                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}"
-                            onchange="updateItems(this, {{ item.id }})">
+                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" onchange="updateItems(this, {{ item.id }})">
                         <span class="item-name">{{ item.name }}</span>
                         <span class="item-price">{{ item.price }}₽</span>
-                        {% if item_allergens %}
-                        <span class="allergens">⚠️
-                            {% for a in item_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                        </span>
+                        {% if matching_allergens %}
+                        <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
                         {% endif %}
                     </label>
                     {% endfor %}
@@ -84,8 +83,7 @@
             {% endfor %}
             <div class="order-options">
                 <label>
-                    <input type="checkbox" name="use_subscription" value="1" id="sub_breakfast"
-                        {% if not breakfast_sub or breakfast_sub.meals_left < 1 %}disabled{% endif %}>
+                    <input type="checkbox" name="use_subscription" value="1" id="sub_breakfast" {% if not breakfast_sub or breakfast_sub.meals_left < 1 %}disabled{% endif %}>
                     Использовать абонемент (осталось: {{ breakfast_sub.meals_left if breakfast_sub else 0 }})
                 </label>
             </div>
@@ -110,20 +108,19 @@
                     {% for item in items %}
                     {% set has_allergy = false %}
                     {% set item_allergens = menu_allergies.get(item.id, []) %}
+                    {% set matching_allergens = [] %}
                     {% for a in item_allergens %}
-                        {% if a.id in user_allergies %}
-                            {% set has_allergy = true %}
-                        {% endif %}
+                    {% if a.id in user_allergies %}
+                    {% set has_allergy = true %}
+                    {% if matching_allergens.append(a) %}{% endif %}
+                    {% endif %}
                     {% endfor %}
                     <label class="item {% if has_allergy %}has-allergy{% endif %}">
-                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}"
-                            onchange="updateItems(this, {{ item.id }})">
+                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" onchange="updateItems(this, {{ item.id }})">
                         <span class="item-name">{{ item.name }}</span>
                         <span class="item-price">{{ item.price }}₽</span>
-                        {% if item_allergens %}
-                        <span class="allergens">⚠️
-                            {% for a in item_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                        </span>
+                        {% if matching_allergens %}
+                        <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
                         {% endif %}
                     </label>
                     {% endfor %}
@@ -132,8 +129,7 @@
             {% endfor %}
             <div class="order-options">
                 <label>
-                    <input type="checkbox" name="use_subscription" value="1" id="sub_lunch"
-                        {% if not lunch_sub or lunch_sub.meals_left < 1 %}disabled{% endif %}>
+                    <input type="checkbox" name="use_subscription" value="1" id="sub_lunch" {% if not lunch_sub or lunch_sub.meals_left < 1 %}disabled{% endif %}>
                     Использовать абонемент (осталось: {{ lunch_sub.meals_left if lunch_sub else 0 }})
                 </label>
             </div>
@@ -148,40 +144,43 @@
     <div class="orders-section">
         <h2>📋 Мои заказы</h2>
         {% if orders %}
-        <table>
-            <tr>
-                <th>Дата</th>
-                <th>Тип</th>
-                <th>Способ</th>
-                <th>Статус</th>
-                <th>Действие</th>
-            </tr>
-            {% for order in orders %}
-            <tr>
-                <td>{{ order.date }}</td>
-                <td>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</td>
-                <td>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</td>
-                <td>
-                    {% if order.is_received %}
-                    ✅ Получен
-                    {% elif order.is_prepared %}
-                    🍳 Готов
-                    {% else %}
-                    ⏳ Готовится
-                    {% endif %}
-                </td>
-                <td>
-                    {% if order.is_prepared and not order.is_received %}
-                    <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small">Получить</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        {% for order in orders %}
+        <div class="order-card">
+            <div class="order-header-info">
+                <span><strong>{{ order.date }}</strong></span>
+                <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
+                <span>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</span>
+                <span>
+                    {% if order.is_received %}✅ Получен
+                    {% elif order.is_prepared %}🍳 Готов
+                    {% else %}⏳ Готовится{% endif %}
+                </span>
+                {% if order.is_prepared and not order.is_received %}
+                <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small">Получить</a>
+                {% endif %}
+            </div>
+            <div class="order-items-list">
+                {% if order.is_subscription %}
+                    {% set ns = namespace(total=0) %}
+                    {% for oi in order.items %}
+                        {% set ns.total = ns.total + oi.price %}
+                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
+                    {% endfor %}
+                    <span class="order-total-tag">Оплачено: {{ ns.total }}₽ (абонемент)</span>
+                {% else %}
+                    {% set ns = namespace(total=0) %}
+                    {% for oi in order.items %}
+                        {% set ns.total = ns.total + oi.price %}
+                        <span class="order-item-tag">{{ oi.menu_item.name }} — {{ oi.price }}₽</span>
+                    {% endfor %}
+                    <span class="order-total-tag">Итого: {{ ns.total }}₽</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
         {% else %}
         <p>Заказов пока нет</p>
         {% endif %}
     </div>
 </div>
-
 {% endblock %}
