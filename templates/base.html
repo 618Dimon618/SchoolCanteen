@@ -20,7 +20,8 @@
             <a href="{{ url_for('reviews') }}">Отзывы</a>
             <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
             {% elif session.get('role') == 'cook' %}
-            <a href="{{ url_for('cook') }}">Панель повара</a>
+            <a href="{{ url_for('cook') }}">Заказы</a>
+            <a href="{{ url_for('cook_dishes') }}">Блюда</a>
             <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
             {% elif session.get('role') == 'admin' %}
             <a href="{{ url_for('admin') }}">Панель админа</a>

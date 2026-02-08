@@ -40,143 +40,167 @@
         </div>
     </div>
 
-    <div class="day-selector">
-        <h3>Выберите день</h3>
-        <div class="days">
-            {% for i in range(5) %}
-            <a href="?day={{ i }}" class="day-btn {% if selected_day == i %}active{% endif %}">{{ days[i] }}</a>
-            {% endfor %}
+    <div class="menu-section">
+        <div class="collapsible-header" onclick="toggleSection('breakfast-section')">
+            <h2>🌅 Завтрак</h2>
+            <span class="collapse-icon" id="breakfast-section-icon">▼</span>
+        </div>
+        <div class="collapsible-body collapsed" id="breakfast-section">
+            <p><small>Время завтрака: 08:00–08:30. Выберите по одному блюду из каждой категории.</small></p>
+            {% if breakfast_menu %}
+            <form method="POST" action="{{ url_for('order') }}">
+                <input type="hidden" name="meal_type" value="breakfast">
+                {% for category, items in breakfast_menu.items() %}
+                <div class="category">
+                    <h4>{{ category.name }}</h4>
+                    <div class="items">
+                        {% for item in items %}
+                        {% set is_unavailable = item.id in unavailable_ids %}
+                        {% set item_allergens = menu_allergies.get(item.id, []) %}
+                        {% set matching_allergens = [] %}
+                        {% for a in item_allergens %}
+                        {% if a.id in user_allergies %}
+                        {% if matching_allergens.append(a) %}{% endif %}
+                        {% endif %}
+                        {% endfor %}
+                        <label class="item {% if is_unavailable %}unavailable{% endif %} {% if matching_allergens %}has-allergy{% endif %}">
+                            <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %}>
+                            <span class="item-name">{{ item.name }}</span>
+                            <span class="item-price">{{ item.price }}₽</span>
+                            {% if is_unavailable %}
+                            <span class="item-unavailable-badge">Недоступно</span>
+                            {% endif %}
+                            {% if matching_allergens %}
+                            <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                            {% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="order-options">
+                    <label>
+                        <input type="checkbox" name="use_subscription" value="1" {% if not breakfast_sub or breakfast_sub.meals_left < 1 %}disabled{% endif %}>
+                        Использовать абонемент (осталось: {{ breakfast_sub.meals_left if breakfast_sub else 0 }})
+                    </label>
+                </div>
+                <button type="submit" class="order-btn">Заказать завтрак</button>
+            </form>
+            {% else %}
+            <p>Меню пока не добавлено</p>
+            {% endif %}
         </div>
     </div>
 
     <div class="menu-section">
-        <h2>🌅 Завтрак ({{ days[selected_day] }})</h2>
-        <p><small>Время завтрака: 08:00–08:30</small></p>
-        {% if breakfast_menu %}
-        <form method="POST" action="{{ url_for('order') }}">
-            <input type="hidden" name="meal_type" value="breakfast">
-            {% for category, items in breakfast_menu.items() %}
-            <div class="category">
-                <h4>{{ category.name }}</h4>
-                <div class="items">
-                    {% for item in items %}
-                    {% set has_allergy = false %}
-                    {% set item_allergens = menu_allergies.get(item.id, []) %}
-                    {% set matching_allergens = [] %}
-                    {% for a in item_allergens %}
-                    {% if a.id in user_allergies %}
-                    {% set has_allergy = true %}
-                    {% if matching_allergens.append(a) %}{% endif %}
-                    {% endif %}
-                    {% endfor %}
-                    <label class="item {% if has_allergy %}has-allergy{% endif %}">
-                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}">
-                        <span class="item-name">{{ item.name }}</span>
-                        <span class="item-price">{{ item.price }}₽</span>
-                        {% if matching_allergens %}
-                        <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+        <div class="collapsible-header" onclick="toggleSection('lunch-section')">
+            <h2>🍽️ Обед</h2>
+            <span class="collapse-icon" id="lunch-section-icon">▼</span>
+        </div>
+        <div class="collapsible-body collapsed" id="lunch-section">
+            <p><small>Время обеда: 13:00–14:00. Выберите по одному блюду из каждой категории.</small></p>
+            {% if lunch_menu %}
+            <form method="POST" action="{{ url_for('order') }}">
+                <input type="hidden" name="meal_type" value="lunch">
+                {% for category, items in lunch_menu.items() %}
+                <div class="category">
+                    <h4>{{ category.name }}</h4>
+                    <div class="items">
+                        {% for item in items %}
+                        {% set is_unavailable = item.id in unavailable_ids %}
+                        {% set item_allergens = menu_allergies.get(item.id, []) %}
+                        {% set matching_allergens = [] %}
+                        {% for a in item_allergens %}
+                        {% if a.id in user_allergies %}
+                        {% if matching_allergens.append(a) %}{% endif %}
                         {% endif %}
-                    </label>
-                    {% endfor %}
+                        {% endfor %}
+                        <label class="item {% if is_unavailable %}unavailable{% endif %} {% if matching_allergens %}has-allergy{% endif %}">
+                            <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %}>
+                            <span class="item-name">{{ item.name }}</span>
+                            <span class="item-price">{{ item.price }}₽</span>
+                            {% if is_unavailable %}
+                            <span class="item-unavailable-badge">Недоступно</span>
+                            {% endif %}
+                            {% if matching_allergens %}
+                            <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                            {% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
                 </div>
-            </div>
-            {% endfor %}
-            <div class="order-options">
-                <label>
-                    <input type="checkbox" name="use_subscription" value="1" {% if not breakfast_sub or breakfast_sub.meals_left < 1 %}disabled{% endif %}>
-                    Использовать абонемент (осталось: {{ breakfast_sub.meals_left if breakfast_sub else 0 }})
-                </label>
-            </div>
-            <button type="submit" class="order-btn">Заказать завтрак</button>
-        </form>
-        {% else %}
-        <p>Меню на этот день пока не добавлено</p>
-        {% endif %}
-    </div>
-
-    <div class="menu-section">
-        <h2>🍽️ Обед ({{ days[selected_day] }})</h2>
-        <p><small>Время обеда: 13:00–14:00</small></p>
-        {% if lunch_menu %}
-        <form method="POST" action="{{ url_for('order') }}">
-            <input type="hidden" name="meal_type" value="lunch">
-            {% for category, items in lunch_menu.items() %}
-            <div class="category">
-                <h4>{{ category.name }}</h4>
-                <div class="items">
-                    {% for item in items %}
-                    {% set has_allergy = false %}
-                    {% set item_allergens = menu_allergies.get(item.id, []) %}
-                    {% set matching_allergens = [] %}
-                    {% for a in item_allergens %}
-                    {% if a.id in user_allergies %}
-                    {% set has_allergy = true %}
-                    {% if matching_allergens.append(a) %}{% endif %}
-                    {% endif %}
-                    {% endfor %}
-                    <label class="item {% if has_allergy %}has-allergy{% endif %}">
-                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}">
-                        <span class="item-name">{{ item.name }}</span>
-                        <span class="item-price">{{ item.price }}₽</span>
-                        {% if matching_allergens %}
-                        <span class="allergens">⚠️ {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-                        {% endif %}
+                {% endfor %}
+                <div class="order-options">
+                    <label>
+                        <input type="checkbox" name="use_subscription" value="1" {% if not lunch_sub or lunch_sub.meals_left < 1 %}disabled{% endif %}>
+                        Использовать абонемент (осталось: {{ lunch_sub.meals_left if lunch_sub else 0 }})
                     </label>
-                    {% endfor %}
                 </div>
-            </div>
-            {% endfor %}
-            <div class="order-options">
-                <label>
-                    <input type="checkbox" name="use_subscription" value="1" {% if not lunch_sub or lunch_sub.meals_left < 1 %}disabled{% endif %}>
-                    Использовать абонемент (осталось: {{ lunch_sub.meals_left if lunch_sub else 0 }})
-                </label>
-            </div>
-            <button type="submit" class="order-btn">Заказать обед</button>
-        </form>
-        {% else %}
-        <p>Меню на этот день пока не добавлено</p>
-        {% endif %}
+                <button type="submit" class="order-btn">Заказать обед</button>
+            </form>
+            {% else %}
+            <p>Меню пока не добавлено</p>
+            {% endif %}
+        </div>
     </div>
 
     <div class="orders-section">
-        <h2>📋 Мои заказы</h2>
-        {% if orders %}
-        {% for order in orders %}
-        <div class="order-card">
-            <div class="order-header-info">
-                <span><strong>{{ order.date }}</strong></span>
-                <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
-                <span>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</span>
-                <span>
-                    {% if order.is_received %}✅ Получен
-                    {% elif order.is_prepared %}🍳 Готов
-                    {% else %}⏳ Готовится{% endif %}
-                </span>
-                {% if order.is_prepared and not order.is_received %}
-                <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small">Получить</a>
-                {% endif %}
-            </div>
-            <div class="order-items-list">
-                {% if order.is_subscription %}
-                    {% for oi in order.items %}
-                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
-                    {% endfor %}
-                    <span class="order-total-tag">{{ sub_prices.get(order.meal_type, 100) }}₽ (абонемент)</span>
-                {% else %}
-                    {% set ns = namespace(total=0) %}
-                    {% for oi in order.items %}
-                        {% set ns.total = ns.total + oi.price %}
-                        <span class="order-item-tag">{{ oi.menu_item.name }} — {{ oi.price }}₽</span>
-                    {% endfor %}
-                    <span class="order-total-tag">Итого: {{ ns.total }}₽</span>
-                {% endif %}
-            </div>
+        <div class="collapsible-header" onclick="toggleSection('orders-section')">
+            <h2>📋 Мои заказы</h2>
+            <span class="collapse-icon" id="orders-section-icon">▼</span>
         </div>
-        {% endfor %}
-        {% else %}
-        <p>Заказов пока нет</p>
-        {% endif %}
+        <div class="collapsible-body collapsed" id="orders-section">
+            {% if orders %}
+            {% for order in orders %}
+            <div class="order-card">
+                <div class="order-header-info">
+                    <span><strong>{{ order.date }}</strong></span>
+                    <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
+                    <span>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</span>
+                    <span>
+                        {% if order.is_received %}✅ Получен
+                        {% elif order.is_prepared %}🍳 Готов
+                        {% else %}⏳ Готовится{% endif %}
+                    </span>
+                    {% if order.is_prepared and not order.is_received %}
+                    <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small btn-success">Получить</a>
+                    {% endif %}
+                </div>
+                <div class="order-items-list">
+                    {% if order.is_subscription %}
+                        {% for oi in order.items %}
+                            <span class="order-item-tag">{{ oi.menu_item.name }}</span>
+                        {% endfor %}
+                        <span class="order-total-tag">{{ sub_prices.get(order.meal_type, 100) }}₽ (абонемент)</span>
+                    {% else %}
+                        {% set ns = namespace(total=0) %}
+                        {% for oi in order.items %}
+                            {% set ns.total = ns.total + oi.price %}
+                            <span class="order-item-tag">{{ oi.menu_item.name }} — {{ oi.price }}₽</span>
+                        {% endfor %}
+                        <span class="order-total-tag">Итого: {{ ns.total }}₽</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p>Заказов пока нет</p>
+            {% endif %}
+        </div>
     </div>
 </div>
+
+<script>
+function toggleSection(id) {
+    var body = document.getElementById(id);
+    var icon = document.getElementById(id + '-icon');
+    if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        icon.textContent = '▲';
+    } else {
+        body.classList.add('collapsed');
+        icon.textContent = '▼';
+    }
+}
+</script>
 {% endblock %}
