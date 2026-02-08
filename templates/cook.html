@@ -3,6 +3,25 @@
 <div class="dashboard">
     <h1>Панель повара</h1>
 
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>🌅 Завтраков сегодня</h3>
+            <p class="big-number">{{ breakfast_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>🍽️ Обедов сегодня</h3>
+            <p class="big-number">{{ lunch_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>✅ Приготовлено</h3>
+            <p class="big-number">{{ prepared_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>📦 Выдано</h3>
+            <p class="big-number">{{ received_count }}</p>
+        </div>
+    </div>
+
     <div class="section">
         <h2>🍳 Заказы к приготовлению</h2>
         {% if orders %}
@@ -12,65 +31,51 @@
                 <span class="cook-order-icon">📋 Заказ #{{ order.id }}</span>
                 <span>{{ order.user.full_name or order.user.username }}</span>
                 <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
-                <span>{{ order.date }}</span>
-                <a href="{{ url_for('prepare_order', order_id=order.id) }}" class="btn-small btn-success">✅ Готово к выдаче</a>
+                <span>{{ order.created_at.strftime('%H:%M') }}</span>
             </div>
-            {% for oi in order.items %}
-            <div class="cook-dish-block">
-                <div class="cook-dish-name">🍽️ {{ oi.menu_item.name }}</div>
-                {% set ingredients = order_ingredients.get(oi.menu_item.id, []) %}
-                {% if ingredients %}
-                <div class="cook-ingredients">
-                    {% for ing in ingredients %}
-                    <span class="ingredient-tag">{{ ing.product.name }}:
-                        {% if ing.product.unit == 'шт' %}
-                            {{ ing.quantity | int }} шт
-                        {% elif ing.product.unit == 'кг' %}
-                            {% if ing.quantity >= 1 %}
-                                {{ ing.quantity | round(2) }} кг
-                            {% else %}
-                                {{ (ing.quantity * 1000) | round(0) | int }} г
-                            {% endif %}
-                        {% elif ing.product.unit == 'л' %}
-                            {% if ing.quantity >= 1 %}
-                                {{ ing.quantity | round(2) }} л
-                            {% else %}
-                                {{ (ing.quantity * 1000) | round(0) | int }} мл
-                            {% endif %}
-                        {% else %}
-                            {{ ing.quantity | round(2) }} {{ ing.product.unit }}
-                        {% endif %}
+            <div class="cook-order-items-list">
+                {% for oi in order.items %}
+                <div class="cook-item-row {% if oi.is_cooked %}cooked{% endif %}">
+                    <span class="cook-item-name">
+                        {% if oi.is_cooked %}✅{% else %}⬜{% endif %}
+                        {{ oi.menu_item.name }} — {{ oi.price }}₽
                     </span>
-                    {% endfor %}
+                    {% if oi.is_cooked %}
+                    <span class="cook-item-status-done">Готово</span>
+                    {% else %}
+                    {% if order_item_can_cook.get(oi.id, false) %}
+                    <a href="{{ url_for('cook_item', oi_id=oi.id) }}" class="btn-small btn-cook">🔥 Приготовить</a>
+                    {% else %}
+                    <span class="cook-item-no-stock">❌ Нет продуктов</span>
+                    {% endif %}
+                    {% endif %}
                 </div>
-                {% endif %}
+                {% endfor %}
             </div>
+            {% set ns = namespace(fully_cooked=true) %}
+            {% for oi in order.items %}
+                {% if not oi.is_cooked %}{% set ns.fully_cooked = false %}{% endif %}
             {% endfor %}
+            {% if ns.fully_cooked %}
+            <div class="cook-order-ready">
+                <a href="{{ url_for('prepare_order', order_id=order.id) }}" class="btn btn-success">📦 Заказ готов к выдаче</a>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
         {% else %}
-        <p>Все заказы приготовлены!</p>
+        <p>Нет заказов к приготовлению</p>
         {% endif %}
     </div>
 
     <div class="section">
         <h2>📦 Остатки продуктов</h2>
         <table>
-            <tr>
-                <th>Продукт</th>
-                <th>Количество</th>
-                <th>Ед.</th>
-            </tr>
+            <tr><th>Продукт</th><th>Количество</th><th>Ед.</th></tr>
             {% for product in products %}
             <tr class="{% if product.quantity < 10 %}low-stock{% endif %}">
                 <td>{{ product.name }}</td>
-                <td>
-                    {% if product.unit == 'шт' %}
-                        {{ product.quantity | round(0) | int }}
-                    {% else %}
-                        {{ product.quantity | round(2) }}
-                    {% endif %}
-                </td>
+                <td>{% if product.unit == 'шт' %}{{ product.quantity | round(0) | int }}{% else %}{{ product.quantity | round(2) }}{% endif %}</td>
                 <td>{{ product.unit }}</td>
             </tr>
             {% endfor %}
@@ -95,22 +100,13 @@
         <h2>📋 Мои заявки</h2>
         {% if my_requests %}
         <table>
-            <tr>
-                <th>Дата</th>
-                <th>Продукт</th>
-                <th>Кол-во</th>
-                <th>Статус</th>
-            </tr>
+            <tr><th>Дата</th><th>Продукт</th><th>Кол-во</th><th>Статус</th></tr>
             {% for req in my_requests %}
             <tr>
                 <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
                 <td>{{ req.product.name }}</td>
                 <td>{{ req.quantity }}</td>
-                <td>
-                    {% if req.status == 'pending' %}⏳ На рассмотрении
-                    {% elif req.status == 'approved' %}✅ Одобрена
-                    {% else %}❌ Отклонена{% endif %}
-                </td>
+                <td>{% if req.status == 'pending' %}⏳ На рассмотрении{% elif req.status == 'approved' %}✅ Одобрена{% else %}❌ Отклонена{% endif %}</td>
             </tr>
             {% endfor %}
         </table>

@@ -40,6 +40,7 @@ class MenuItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     day_of_week = db.Column(db.Integer, nullable=False)
+    is_available = db.Column(db.Boolean, default=True)
     category = db.relationship('Category', backref='items')
 
 class MenuItemAllergy(db.Model):
@@ -85,6 +86,7 @@ class OrderItem(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
     menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'))
     price = db.Column(db.Float, nullable=False)
+    is_cooked = db.Column(db.Boolean, default=False)
     menu_item = db.relationship('MenuItem')
 
 class Payment(db.Model):

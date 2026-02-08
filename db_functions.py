@@ -99,6 +99,113 @@ def get_menu_by_day(day_of_week, meal_type):
     return result
 
 
+def get_all_unique_menu_items(meal_type):
+    categories = Category.query.filter_by(meal_type=meal_type).all()
+    result = {}
+    for cat in categories:
+        items = MenuItem.query.filter_by(category_id=cat.id).all()
+        seen_names = set()
+        unique_items = []
+        for item in items:
+            if item.name not in seen_names:
+                seen_names.add(item.name)
+                unique_items.append(item)
+        if unique_items:
+            result[cat] = unique_items
+    return result
+
+
+def check_item_ingredients_available(item_id):
+    ingredients = MenuItemIngredient.query.filter_by(menu_item_id=item_id).all()
+    if not ingredients:
+        return True
+    for ing in ingredients:
+        prod = Product.query.get(ing.product_id)
+        if not prod or prod.quantity < ing.quantity:
+            return False
+    return True
+
+
+def get_unavailable_item_ids():
+    items = MenuItem.query.all()
+    unavailable = set()
+    checked_names = {}
+    for item in items:
+        if item.name in checked_names:
+            if not checked_names[item.name]:
+                unavailable.add(item.id)
+            continue
+        available = item.is_available and check_item_ingredients_available(item.id)
+        checked_names[item.name] = available
+        if not available:
+            unavailable.add(item.id)
+    return unavailable
+
+
+def toggle_menu_item_availability(item_id):
+    item = MenuItem.query.get(item_id)
+    if item:
+        new_status = not item.is_available
+        same_items = MenuItem.query.filter_by(name=item.name).all()
+        for i in same_items:
+            i.is_available = new_status
+        db.session.commit()
+        return new_status
+    return None
+
+
+def mark_order_item_cooked(order_item_id):
+    oi = OrderItem.query.get(order_item_id)
+    if oi and not oi.is_cooked:
+        ingredients = MenuItemIngredient.query.filter_by(menu_item_id=oi.menu_item_id).all()
+        for ing in ingredients:
+            prod = Product.query.get(ing.product_id)
+            if not prod or prod.quantity < ing.quantity:
+                return False
+        for ing in ingredients:
+            prod = Product.query.get(ing.product_id)
+            if prod:
+                prod.quantity = round(max(0, prod.quantity - ing.quantity), 2)
+        oi.is_cooked = True
+        db.session.commit()
+        return True
+    return False
+
+
+def is_order_fully_cooked(order_id):
+    items = OrderItem.query.filter_by(order_id=order_id).all()
+    if not items:
+        return False
+    return all(oi.is_cooked for oi in items)
+
+
+def create_custom_dish(name, price, category_id, ingredients_data, allergy_ids=None):
+    item = MenuItem(name=name, price=price, category_id=category_id, day_of_week=0, is_available=True)
+    db.session.add(item)
+    db.session.commit()
+    for prod_id, qty in ingredients_data:
+        ing = MenuItemIngredient(menu_item_id=item.id, product_id=prod_id, quantity=qty)
+        db.session.add(ing)
+    if allergy_ids:
+        for a_id in allergy_ids:
+            mia = MenuItemAllergy(menu_item_id=item.id, allergy_id=a_id)
+            db.session.add(mia)
+    db.session.commit()
+    return item
+
+
+def delete_menu_item(item_id):
+    item = MenuItem.query.get(item_id)
+    if not item:
+        return False
+    MenuItemIngredient.query.filter_by(menu_item_id=item_id).delete()
+    MenuItemAllergy.query.filter_by(menu_item_id=item_id).delete()
+    OrderItem.query.filter_by(menu_item_id=item_id).delete()
+    db.session.delete(item)
+    db.session.commit()
+    return True
+
+
 def add_product(name, quantity, unit, price=0):
     prod = Product(name=name, quantity=quantity, unit=unit, price=price)
     db.session.add(prod)
@@ -152,7 +259,6 @@ def create_order(user_id, meal_type, item_ids, is_subscription=False):
     order = Order(user_id=user_id, date=today, meal_type=meal_type, is_subscription=is_subscription)
     db.session.add(order)
     db.session.commit()
-
     total = 0
     for item_id in item_ids:
         item = MenuItem.query.get(item_id)
@@ -185,14 +291,10 @@ def get_orders_to_prepare():
 def mark_order_prepared(order_id):
     order = Order.query.get(order_id)
     if order and not order.is_prepared:
-        order.is_prepared = True
         items = OrderItem.query.filter_by(order_id=order_id).all()
-        for oi in items:
-            ingredients = MenuItemIngredient.query.filter_by(menu_item_id=oi.menu_item_id).all()
-            for ing in ingredients:
-                prod = Product.query.get(ing.product_id)
-                if prod:
-                    prod.quantity = round(max(0, prod.quantity - ing.quantity), 2)
+        if not all(oi.is_cooked for oi in items):
+            return False
+        order.is_prepared = True
         db.session.commit()
         return True
     return False
@@ -347,7 +449,6 @@ def get_expenses():
 
 
 def get_subscription_orders_count_for_day(user_id, meal_type, day=None):
-    """Сколько заказов по абонементу у пользователя за указанный день и тип приёма пищи."""
     if day is None:
         day = date.today()
     return Order.query.filter_by(

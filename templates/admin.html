@@ -25,10 +25,20 @@
             <p class="big-number">{{ order_stats.total }}</p>
             <small>Сегодня: {{ order_stats.today }} | Получено: {{ order_stats.received }}</small>
         </div>
+        <div class="stat-card">
+            <h3>🌅 Завтраки</h3>
+            <p class="big-number">{{ total_breakfasts }}</p>
+            <small>Сегодня: {{ breakfast_today }}</small>
+        </div>
+        <div class="stat-card">
+            <h3>🍲 Обеды</h3>
+            <p class="big-number">{{ total_lunches }}</p>
+            <small>Сегодня: {{ lunch_today }}</small>
+        </div>
     </div>
 
     <div class="section">
-        <a href="{{ url_for('download_report') }}" class="btn">📥 Скачать отчёт</a>
+        <a href="{{ url_for('download_report') }}" class="btn">📥 Скачать отчёт (Excel)</a>
     </div>
 
     {% if pending_users %}
