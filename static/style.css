@@ -24,6 +24,12 @@ nav {
     font-weight: bold;
 }
 
+.nav-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .nav-links a {
     color: white;
     text-decoration: none;
@@ -149,7 +155,8 @@ main {
     flex-wrap: wrap;
 }
 
-.inline-form input, .inline-form select {
+.inline-form input,
+.inline-form select {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
@@ -461,7 +468,8 @@ tr:hover {
     max-width: 500px;
 }
 
-.review-form select, .review-form textarea {
+.review-form select,
+.review-form textarea {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
@@ -766,12 +774,6 @@ tr:hover {
     border-radius: 5px;
 }
 
-.nav-links {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
 .collapsible-header {
     display: flex;
     justify-content: space-between;
@@ -809,4 +811,121 @@ tr:hover {
     padding: 8px 0;
     font-size: 15px;
     border-bottom: 1px solid #eee;
+}
+
+.captcha-block {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.captcha-block label {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.captcha-block input {
+    width: 100px;
+    text-align: center;
+    font-size: 18px;
+    margin: 0 auto;
+}
+
+/* Flash контейнер для AJAX */
+#flash-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+}
+
+#flash-container .flash {
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.flash-success {
+    background: #27ae60 !important;
+}
+
+.flash-error {
+    background: #e74c3c !important;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Плавные переходы */
+.flash {
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+button, .btn, .btn-small {
+    transition: all 0.2s ease;
+}
+
+button:hover, .btn:hover, .btn-small:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+button:active, .btn:active, .btn-small:active {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.order-card, .cook-order-card, .dish-manage-card {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cook-order-card {
+    transition: opacity 0.3s ease;
+}
+
+.cook-item-row {
+    transition: all 0.3s ease;
+}
+
+.cook-item-row.cooked {
+    animation: cookDone 0.3s ease;
+}
+
+@keyframes cookDone {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
 }

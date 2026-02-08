@@ -1,9 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, Response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, Response, jsonify
 from models import db, User, MenuItem, Category, Order, OrderItem, Notification, PurchaseRequest, MenuItemIngredient, Product, Allergy, MenuItemAllergy
 from db_functions import *
 from datetime import date, timedelta
+import random
 
 app = Flask(__name__)
+
+def generate_captcha():
+    a = random.randint(1, 10)
+    b = random.randint(1, 10)
+    return a, b, a + b
 app.secret_key = 'school_canteen_secret_key_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///canteen.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -41,22 +47,52 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        captcha_answer = request.form.get('captcha_answer', '')
+        expected = session.get('captcha_result')
+        try:
+            if int(captcha_answer) != expected:
+                flash('Неверный ответ на проверку')
+                a, b, result = generate_captcha()
+                session['captcha_result'] = result
+                return render_template('login.html', captcha_a=a, captcha_b=b)
+        except ValueError:
+            flash('Введите число')
+            a, b, result = generate_captcha()
+            session['captcha_result'] = result
+            return render_template('login.html', captcha_a=a, captcha_b=b)
         username = request.form.get('username')
         password = request.form.get('password')
         user = get_user(username)
         if user and user.check_password(password):
             if not user.is_approved:
                 flash('Ваш аккаунт ещё не подтверждён администратором')
-                return render_template('login.html')
+                a, b, result = generate_captcha()
+                session['captcha_result'] = result
+                return render_template('login.html', captcha_a=a, captcha_b=b)
             session['user_id'] = user.id
             session['role'] = user.role
             return redirect(url_for('index'))
         flash('Неверный логин или пароль')
-    return render_template('login.html')
+    a, b, result = generate_captcha()
+    session['captcha_result'] = result
+    return render_template('login.html', captcha_a=a, captcha_b=b)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        captcha_answer = request.form.get('captcha_answer', '')
+        expected = session.get('captcha_result')
+        try:
+            if int(captcha_answer) != expected:
+                flash('Неверный ответ на проверку')
+                a, b, result = generate_captcha()
+                session['captcha_result'] = result
+                return render_template('register.html', captcha_a=a, captcha_b=b)
+        except ValueError:
+            flash('Введите число')
+            a, b, result = generate_captcha()
+            session['captcha_result'] = result
+            return render_template('register.html', captcha_a=a, captcha_b=b)
         username = request.form.get('username')
         password = request.form.get('password')
         full_name = request.form.get('full_name', '')
@@ -66,11 +102,13 @@ def register():
         else:
             add_user(username, password, 'student', full_name, class_name)
             admins = User.query.filter_by(role='admin').all()
-            for a in admins:
-                add_notification(a.id, f'Новая заявка на регистрацию: {full_name} ({username})')
+            for adm in admins:
+                add_notification(adm.id, f'Новая заявка на регистрацию: {full_name} ({username})')
             flash('Заявка на регистрацию отправлена. Дождитесь подтверждения администратора.')
             return redirect(url_for('login'))
-    return render_template('register.html')
+    a, b, result = generate_captcha()
+    session['captcha_result'] = result
+    return render_template('register.html', captcha_a=a, captcha_b=b)
 
 @app.route('/logout')
 def logout():
@@ -457,6 +495,23 @@ def add_request():
     flash('Заявка создана!')
     return redirect(url_for('cook'))
 
+@app.route('/cook/issued')
+def cook_issued():
+    if 'user_id' not in session or session.get('role') != 'cook':
+        return redirect(url_for('login'))
+    user = get_user_by_id(session['user_id'])
+    unread = get_unread_notifications(user.id)
+    issued_orders = get_issued_orders()
+    breakfast_issued = [o for o in issued_orders if o.meal_type == 'breakfast']
+    lunch_issued = [o for o in issued_orders if o.meal_type == 'lunch']
+    return render_template('cook_issued.html',
+        user=user,
+        unread_count=len(unread),
+        issued_orders=issued_orders,
+        breakfast_issued=breakfast_issued,
+        lunch_issued=lunch_issued
+    )
+
 @app.route('/admin')
 def admin():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -470,6 +525,7 @@ def admin():
     users = User.query.all()
     pending_users = User.query.filter_by(is_approved=False).all()
     unread = get_unread_notifications(user.id)
+    attendance = get_attendance_stats()
 
     today = date.today()
     all_today = Order.query.filter_by(date=today).all()
@@ -492,7 +548,8 @@ def admin():
         breakfast_today=breakfast_today,
         lunch_today=lunch_today,
         total_breakfasts=total_breakfasts,
-        total_lunches=total_lunches
+        total_lunches=total_lunches,
+        attendance=attendance
     )
 
 @app.route('/approve/<int:req_id>')
@@ -746,6 +803,135 @@ def download_report():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={'Content-Disposition': 'attachment; filename=report.xlsx'}
     )
+
+# ===================== API ROUTES =====================
+
+@app.route('/api/order', methods=['POST'])
+def api_order():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Не авторизован'})
+    user = get_user_by_id(session['user_id'])
+    meal_type = request.form.get('meal_type')
+    use_sub = request.form.get('use_subscription') == '1'
+
+    item_ids = []
+    for key in request.form:
+        if key.startswith('cat_'):
+            val = request.form.get(key)
+            if val:
+                item_ids.append(int(val))
+
+    if not item_ids:
+        return jsonify({'success': False, 'message': 'Выберите блюда'})
+
+    unavailable = get_unavailable_item_ids()
+    for item_id in item_ids:
+        if item_id in unavailable:
+            return jsonify({'success': False, 'message': 'Одно или несколько блюд недоступно'})
+
+    if use_sub:
+        today = date.today()
+        already = get_subscription_orders_count_for_day(user.id, meal_type, today)
+        if already >= 1:
+            return jsonify({'success': False, 'message': 'По абонементу уже оформлен заказ'})
+        sub = get_subscription(user.id, meal_type)
+        if not sub or sub.meals_left < 1:
+            return jsonify({'success': False, 'message': 'Нет абонемента'})
+        use_subscription(user.id, meal_type)
+        order_obj, total = create_order(user.id, meal_type, item_ids, is_subscription=True)
+        cooks = User.query.filter_by(role='cook').all()
+        for c in cooks:
+            add_notification(c.id, f'Новый заказ #{order_obj.id} от {user.full_name or user.username}')
+        return jsonify({
+            'success': True,
+            'message': 'Заказ по абонементу оформлен!',
+            'balance': user.balance,
+            'sub_left': sub.meals_left
+        })
+    else:
+        items = [MenuItem.query.get(i) for i in item_ids]
+        total = sum(i.price for i in items if i)
+        if user.balance < total:
+            return jsonify({'success': False, 'message': 'Недостаточно средств'})
+        subtract_balance(user.id, total)
+        add_payment(user.id, total, 'purchase')
+        order_obj, _ = create_order(user.id, meal_type, item_ids, is_subscription=False)
+        cooks = User.query.filter_by(role='cook').all()
+        for c in cooks:
+            add_notification(c.id, f'Новый заказ #{order_obj.id} от {user.full_name or user.username}')
+        user = get_user_by_id(session['user_id'])
+        return jsonify({
+            'success': True,
+            'message': f'Заказ на {total} руб. оформлен!',
+            'balance': user.balance
+        })
+
+@app.route('/api/add_balance', methods=['POST'])
+def api_add_balance():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Не авторизован'})
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Неверная сумма'})
+    if amount <= 0:
+        return jsonify({'success': False, 'message': 'Сумма должна быть больше 0'})
+    add_balance(session['user_id'], amount)
+    user = get_user_by_id(session['user_id'])
+    return jsonify({
+        'success': True,
+        'message': f'Баланс пополнен на {amount} руб.',
+        'balance': user.balance
+    })
+
+@app.route('/api/prepare_order/<int:order_id>', methods=['POST'])
+def api_prepare_order(order_id):
+    if 'user_id' not in session or session.get('role') != 'cook':
+        return jsonify({'success': False, 'message': 'Нет доступа'})
+    o = Order.query.get(order_id)
+    if not o:
+        return jsonify({'success': False, 'message': 'Заказ не найден'})
+    if o.is_prepared:
+        return jsonify({'success': False, 'message': 'Уже готов'})
+    if not is_order_fully_cooked(order_id):
+        return jsonify({'success': False, 'message': 'Не все блюда приготовлены'})
+    if mark_order_prepared(order_id):
+        add_notification(o.user_id, f'Ваш заказ #{o.id} готов к выдаче!')
+        return jsonify({'success': True, 'message': 'Заказ готов к выдаче!'})
+    return jsonify({'success': False, 'message': 'Ошибка'})
+
+@app.route('/api/cook_item/<int:oi_id>', methods=['POST'])
+def api_cook_item(oi_id):
+    if 'user_id' not in session or session.get('role') != 'cook':
+        return jsonify({'success': False, 'message': 'Нет доступа'})
+    oi = OrderItem.query.get(oi_id)
+    if not oi:
+        return jsonify({'success': False, 'message': 'Не найдено'})
+    if oi.is_cooked:
+        return jsonify({'success': False, 'message': 'Уже приготовлено'})
+    if mark_order_item_cooked(oi.id):
+        order_ready = is_order_fully_cooked(oi.order_id)
+        return jsonify({
+            'success': True,
+            'message': f'{oi.menu_item.name} приготовлено',
+            'order_ready': order_ready
+        })
+    return jsonify({'success': False, 'message': 'Не хватает продуктов'})
+
+@app.route('/api/toggle_item/<int:item_id>', methods=['POST'])
+def api_toggle_item(item_id):
+    if 'user_id' not in session or session.get('role') != 'cook':
+        return jsonify({'success': False, 'message': 'Нет доступа'})
+    result = toggle_menu_item_availability(item_id)
+    if result is not None:
+        item = MenuItem.query.get(item_id)
+        status = 'доступно' if result else 'недоступно'
+        return jsonify({
+            'success': True,
+            'message': f'{item.name} теперь {status}',
+            'is_available': result
+        })
+    return jsonify({'success': False, 'message': 'Ошибка'})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

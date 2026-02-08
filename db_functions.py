@@ -457,3 +457,28 @@ def get_subscription_orders_count_for_day(user_id, meal_type, day=None):
         meal_type=meal_type,
         is_subscription=True
     ).count()
+
+
+def get_attendance_stats():
+    orders = Order.query.filter_by(is_received=True).all()
+    by_date = {}
+    by_class = {}
+    by_meal = {'breakfast': 0, 'lunch': 0}
+    for o in orders:
+        date_str = o.date.strftime('%d.%m.%Y')
+        if date_str not in by_date:
+            by_date[date_str] = {'breakfast': 0, 'lunch': 0, 'total': 0}
+        by_date[date_str][o.meal_type] += 1
+        by_date[date_str]['total'] += 1
+        by_meal[o.meal_type] += 1
+        user = User.query.get(o.user_id)
+        if user and user.class_name:
+            if user.class_name not in by_class:
+                by_class[user.class_name] = {'breakfast': 0, 'lunch': 0, 'total': 0}
+            by_class[user.class_name][o.meal_type] += 1
+            by_class[user.class_name]['total'] += 1
+    return {'by_date': by_date, 'by_class': by_class, 'by_meal': by_meal, 'total': len(orders)}
+
+
+def get_issued_orders():
+    return Order.query.filter_by(is_received=True).order_by(Order.created_at.desc()).all()

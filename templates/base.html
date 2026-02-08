@@ -11,7 +11,7 @@
 </head>
 <body>
     <nav>
-        <div class="nav-brand">🍽️ Школьная столовая</div>
+        <div class="nav-brand">Школьная столовая</div>
         {% if session.get('user_id') %}
         <div class="nav-links">
             {% if session.get('role') == 'student' %}
@@ -22,16 +22,18 @@
             {% elif session.get('role') == 'cook' %}
             <a href="{{ url_for('cook') }}">Заказы</a>
             <a href="{{ url_for('cook_dishes') }}">Блюда</a>
+            <a href="{{ url_for('cook_issued') }}">Посещение</a>
             <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
             {% elif session.get('role') == 'admin' %}
             <a href="{{ url_for('admin') }}">Панель админа</a>
             <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
             {% endif %}
-            <a href="{{ url_for('logout') }}">Выйти</a>
+            <a href="{{ url_for('logout') }}">Выход</a>
         </div>
         {% endif %}
     </nav>
     <main>
+        <div id="flash-container"></div>
         {% with messages = get_flashed_messages() %}
         {% if messages %}
         <div class="flash-messages">
@@ -43,15 +45,6 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
-    <script>
-        if (window.performance && window.performance.navigation.type === 2) {
-            window.location.reload();
-        }
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

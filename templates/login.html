@@ -5,6 +5,10 @@
     <form method="POST">
         <input type="text" name="username" placeholder="Логин" required>
         <input type="password" name="password" placeholder="Пароль" required>
+        <div class="captcha-block">
+            <label>{{ captcha_a }} + {{ captcha_b }} = ?</label>
+            <input type="number" name="captcha_answer" placeholder="Ответ" required>
+        </div>
         <button type="submit">Войти</button>
     </form>
     <p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>

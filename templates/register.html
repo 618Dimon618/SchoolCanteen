@@ -7,6 +7,10 @@
         <input type="password" name="password" placeholder="Пароль" required>
         <input type="text" name="full_name" placeholder="ФИО">
         <input type="text" name="class_name" placeholder="Класс (например: 9А)">
+        <div class="captcha-block">
+            <label>{{ captcha_a }} + {{ captcha_b }} = ?</label>
+            <input type="number" name="captcha_answer" placeholder="Ответ" required>
+        </div>
         <button type="submit">Отправить заявку</button>
     </form>
     <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>

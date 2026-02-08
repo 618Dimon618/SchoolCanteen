@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard">
+    <h1>Выданные заказы</h1>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Завтраки выдано</h3>
+            <p class="big-number">{{ breakfast_issued|length }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Обеды выдано</h3>
+            <p class="big-number">{{ lunch_issued|length }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Всего выдано</h3>
+            <p class="big-number">{{ issued_orders|length }}</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="collapsible-header" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed');">
+            Завтраки ({{ breakfast_issued|length }}) <span class="collapse-icon">&#9660;</span>
+        </h2>
+        <div class="collapsible-body">
+            {% if breakfast_issued %}
+            <table>
+                <tr>
+                    <th>N заказа</th>
+                    <th>Дата</th>
+                    <th>Ученик</th>
+                    <th>Класс</th>
+                    <th>Блюда</th>
+                    <th>Оплата</th>
+                </tr>
+                {% for o in breakfast_issued %}
+                <tr>
+                    <td>{{ o.id }}</td>
+                    <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ o.user.full_name or o.user.username }}</td>
+                    <td>{{ o.user.class_name or '-' }}</td>
+                    <td>
+                        {% for oi in o.items %}
+                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ 'Абонемент' if o.is_subscription else 'Разовая' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>Нет выданных завтраков</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="collapsible-header" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed');">
+            Обеды ({{ lunch_issued|length }}) <span class="collapse-icon">&#9660;</span>
+        </h2>
+        <div class="collapsible-body">
+            {% if lunch_issued %}
+            <table>
+                <tr>
+                    <th>N заказа</th>
+                    <th>Дата</th>
+                    <th>Ученик</th>
+                    <th>Класс</th>
+                    <th>Блюда</th>
+                    <th>Оплата</th>
+                </tr>
+                {% for o in lunch_issued %}
+                <tr>
+                    <td>{{ o.id }}</td>
+                    <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ o.user.full_name or o.user.username }}</td>
+                    <td>{{ o.user.class_name or '-' }}</td>
+                    <td>
+                        {% for oi in o.items %}
+                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ 'Абонемент' if o.is_subscription else 'Разовая' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>Нет выданных обедов</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

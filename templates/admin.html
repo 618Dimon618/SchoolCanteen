@@ -5,45 +5,99 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <h3>💰 Прибыль</h3>
-            <p class="big-number">{{ stats.total_income }} ₽</p>
-            <small>Абонементы: {{ stats.subscriptions }}₽ | Покупки: {{ stats.purchases }}₽</small>
+            <h3>Прибыль</h3>
+            <p class="big-number">{{ stats.total_income }} руб.</p>
+            <small>Абонементы: {{ stats.subscriptions }} | Покупки: {{ stats.purchases }}</small>
         </div>
         <div class="stat-card">
-            <h3>📉 Расходы</h3>
-            <p class="big-number">{{ expenses }} ₽</p>
+            <h3>Расходы</h3>
+            <p class="big-number">{{ expenses }} руб.</p>
             <small>На закупку продуктов</small>
         </div>
         <div class="stat-card">
-            <h3>📊 Чистая прибыль</h3>
+            <h3>Чистая прибыль</h3>
             <p class="big-number {% if stats.total_income - expenses > 0 %}positive{% else %}negative{% endif %}">
-                {{ stats.total_income - expenses }} ₽
+                {{ stats.total_income - expenses }} руб.
             </p>
         </div>
         <div class="stat-card">
-            <h3>🍽️ Заказы</h3>
+            <h3>Заказы</h3>
             <p class="big-number">{{ order_stats.total }}</p>
             <small>Сегодня: {{ order_stats.today }} | Получено: {{ order_stats.received }}</small>
         </div>
         <div class="stat-card">
-            <h3>🌅 Завтраки</h3>
+            <h3>Завтраки</h3>
             <p class="big-number">{{ total_breakfasts }}</p>
             <small>Сегодня: {{ breakfast_today }}</small>
         </div>
         <div class="stat-card">
-            <h3>🍲 Обеды</h3>
+            <h3>Обеды</h3>
             <p class="big-number">{{ total_lunches }}</p>
             <small>Сегодня: {{ lunch_today }}</small>
         </div>
     </div>
 
     <div class="section">
-        <a href="{{ url_for('download_report') }}" class="btn">📥 Скачать отчёт (Excel)</a>
+        <a href="{{ url_for('download_report') }}" class="btn">Скачать отчёт (Excel)</a>
+    </div>
+
+    <div class="section">
+        <h2 class="collapsible-header" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed');">
+            Статистика посещаемости <span class="collapse-icon">&#9660;</span>
+        </h2>
+        <div class="collapsible-body">
+            <h3>Всего получили питание: {{ attendance.total }}</h3>
+            <p>Завтраков: {{ attendance.by_meal.breakfast }} | Обедов: {{ attendance.by_meal.lunch }}</p>
+
+            <h4>По классам:</h4>
+            {% if attendance.by_class %}
+            <table>
+                <tr>
+                    <th>Класс</th>
+                    <th>Завтраки</th>
+                    <th>Обеды</th>
+                    <th>Всего</th>
+                </tr>
+                {% for class_name, data in attendance.by_class.items() %}
+                <tr>
+                    <td>{{ class_name }}</td>
+                    <td>{{ data.breakfast }}</td>
+                    <td>{{ data.lunch }}</td>
+                    <td>{{ data.total }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>Нет данных</p>
+            {% endif %}
+
+            <h4>По датам:</h4>
+            {% if attendance.by_date %}
+            <table>
+                <tr>
+                    <th>Дата</th>
+                    <th>Завтраки</th>
+                    <th>Обеды</th>
+                    <th>Всего</th>
+                </tr>
+                {% for date_str, data in attendance.by_date.items() %}
+                <tr>
+                    <td>{{ date_str }}</td>
+                    <td>{{ data.breakfast }}</td>
+                    <td>{{ data.lunch }}</td>
+                    <td>{{ data.total }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>Нет данных</p>
+            {% endif %}
+        </div>
     </div>
 
     {% if pending_users %}
     <div class="section">
-        <h2>👤 Заявки на регистрацию</h2>
+        <h2>Заявки на регистрацию</h2>
         <table>
             <tr>
                 <th>Логин</th>
@@ -58,7 +112,7 @@
                 <td>{{ u.class_name or '-' }}</td>
                 <td>
                     <a href="{{ url_for('approve_user', user_id=u.id) }}" class="btn-small btn-success">Подтвердить</a>
-                    <a href="{{ url_for('reject_user', user_id=u.id) }}" class="btn-small btn-danger">Отклонить</a>
+                    <a href="{{ url_for('reject_user', user_id=u.id) }}" class="btn-small btn-danger" onclick="return confirm('Отклонить заявку?')">Отклонить</a>
                 </td>
             </tr>
             {% endfor %}
@@ -67,7 +121,7 @@
     {% endif %}
 
     <div class="section">
-        <h2>⏳ Заявки на рассмотрении</h2>
+        <h2>Заявки на рассмотрении</h2>
         {% if pending %}
         <table>
             <tr>
@@ -82,10 +136,10 @@
                 <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
                 <td>{{ req.product.name }}</td>
                 <td>{{ req.quantity }} {{ req.product.unit }}</td>
-                <td>{{ (req.quantity * req.product.price)|round(2) }} ₽</td>
+                <td>{{ (req.quantity * req.product.price)|round(2) }} руб.</td>
                 <td>
                     <a href="{{ url_for('approve', req_id=req.id) }}" class="btn-small btn-success">Одобрить</a>
-                    <a href="{{ url_for('reject', req_id=req.id) }}" class="btn-small btn-danger">Отклонить</a>
+                    <a href="{{ url_for('reject', req_id=req.id) }}" class="btn-small btn-danger" onclick="return confirm('Отклонить заявку?')">Отклонить</a>
                 </td>
             </tr>
             {% endfor %}
@@ -96,7 +150,7 @@
     </div>
 
     <div class="section">
-        <h2>📋 Все заявки</h2>
+        <h2>Все заявки</h2>
         {% if all_requests %}
         <table>
             <tr>
@@ -111,11 +165,11 @@
                 <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
                 <td>{{ req.product.name }}</td>
                 <td>{{ req.quantity }} {{ req.product.unit }}</td>
-                <td>{{ (req.quantity * req.product.price)|round(2) }} ₽</td>
+                <td>{{ (req.quantity * req.product.price)|round(2) }} руб.</td>
                 <td>
-                    {% if req.status == 'pending' %}⏳ На рассмотрении
-                    {% elif req.status == 'approved' %}✅ Одобрена
-                    {% else %}❌ Отклонена{% endif %}
+                    {% if req.status == 'pending' %}Ожидает
+                    {% elif req.status == 'approved' %}Одобрена
+                    {% else %}Отклонена{% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -126,7 +180,7 @@
     </div>
 
     <div class="section">
-        <h2>👥 Пользователи</h2>
+        <h2>Пользователи</h2>
         <table>
             <tr>
                 <th>ID</th>
@@ -142,8 +196,8 @@
                 <td>{{ u.username }}</td>
                 <td>{{ u.full_name or '-' }}</td>
                 <td>{% if u.role == 'student' %}Ученик{% elif u.role == 'cook' %}Повар{% elif u.role == 'admin' %}Администратор{% else %}{{ u.role }}{% endif %}</td>
-                <td>{{ u.balance }} ₽</td>
-                <td>{% if u.is_approved %}✅{% else %}⏳{% endif %}</td>
+                <td>{{ u.balance }} руб.</td>
+                <td>{% if u.is_approved %}Да{% else %}Ожидает{% endif %}</td>
             </tr>
             {% endfor %}
         </table>
