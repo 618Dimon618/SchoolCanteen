@@ -1,19 +1,42 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="auth-container">
-    <h1>Регистрация</h1>
+    <h2 style="margin-bottom: 5px;">Регистрация</h2>
+    <p style="color: #7e8299; margin-bottom: 25px;">Создайте новый аккаунт</p>
+
     <form method="POST">
-        <input type="text" name="username" placeholder="Логин" required>
-        <input type="password" name="password" placeholder="Пароль" required>
-        <input type="text" name="full_name" placeholder="ФИО">
-        <input type="text" name="class_name" placeholder="Класс (например: 9А)">
-        <div class="captcha-block">
-            <label>{{ captcha_a }} + {{ captcha_b }} = ?</label>
-            <input type="number" name="captcha_answer" placeholder="Ответ" required>
+        <div style="text-align: left; margin-bottom: 15px;">
+            <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Логин (Username)</label>
+            <input type="text" name="username" required placeholder="Придумайте логин">
         </div>
-        <button type="submit">Отправить заявку</button>
+
+        <div style="text-align: left; margin-bottom: 15px;">
+            <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Пароль</label>
+            <input type="password" name="password" required placeholder="Придумайте пароль">
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div style="flex: 1; text-align: left;">
+                <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">ФИО</label>
+                <input type="text" name="full_name" placeholder="Иванов Иван">
+            </div>
+            <div style="flex: 1; text-align: left;">
+                <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Класс</label>
+                <input type="text" name="class_name" placeholder="9А">
+            </div>
+        </div>
+
+        <div style="background: #fff8dd; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px dashed #ffc700; text-align: left;">
+            <label style="display: block; font-size: 13px; margin-bottom: 8px; font-weight: 700; color: #b58d00;">Проверка безопасности: {{ captcha_a }} + {{ captcha_b }}</label>
+            <input type="number" name="captcha_answer" required placeholder="Сумма" style="width: 100%;">
+        </div>
+
+        <button type="submit" style="width: 100%; margin-top: 10px;">Зарегистрироваться</button>
     </form>
-    <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
-    <p><small>После регистрации ваш аккаунт должен быть подтверждён администратором</small></p>
+
+    <div style="margin-top: 25px; font-size: 13px; border-top: 1px solid #eee; padding-top: 20px;">
+        <span style="color: #7e8299;">Уже есть аккаунт?</span>
+        <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: 600;">Войти</a>
+    </div>
 </div>
 {% endblock %}

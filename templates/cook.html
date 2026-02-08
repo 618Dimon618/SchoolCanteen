@@ -1,116 +1,185 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="dashboard">
-    <h1>Панель повара</h1>
+<div>
+    <h1>Кухонный монитор</h1>
 
+    <!-- KPI -->
     <div class="stats-grid">
         <div class="stat-card">
-            <h3>Завтраков сегодня</h3>
-            <p class="big-number">{{ breakfast_count }}</p>
+            <h3>План Завтрак</h3>
+            <div class="big-number">{{ breakfast_count }}</div>
         </div>
         <div class="stat-card">
-            <h3>Обедов сегодня</h3>
-            <p class="big-number">{{ lunch_count }}</p>
+            <h3>План Обед</h3>
+            <div class="big-number">{{ lunch_count }}</div>
         </div>
         <div class="stat-card">
-            <h3>Приготовлено</h3>
-            <p class="big-number">{{ prepared_count }}</p>
+            <h3>Готово</h3>
+            <div class="big-number" style="color: var(--primary);">{{ prepared_count }}</div>
         </div>
         <div class="stat-card">
             <h3>Выдано</h3>
-            <p class="big-number">{{ received_count }}</p>
+            <div class="big-number" style="color: var(--success-text);">{{ received_count }}</div>
         </div>
     </div>
 
+    <!-- Очередь заказов -->
     <div class="section">
-        <h2>Заказы к приготовлению</h2>
+        <h2>Очередь заказов</h2>
         {% if orders %}
-        {% for order in orders %}
-        <div class="cook-order-card">
-            <div class="cook-order-header">
-                <span class="cook-order-icon">Заказ #{{ order.id }}</span>
-                <span>{{ order.user.full_name or order.user.username }}</span>
-                <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
-                <span>{{ order.created_at.strftime('%H:%M') }}</span>
-            </div>
-            <div class="cook-order-items-list">
-                {% for oi in order.items %}
-                <div class="cook-item-row {% if oi.is_cooked %}cooked{% endif %}" data-oi-id="{{ oi.id }}">
-                    <span class="cook-item-name">
-                        {% if oi.is_cooked %}[OK]{% else %}[ ]{% endif %}
-                        {{ oi.menu_item.name }} - {{ oi.price }} руб.
-                    </span>
-                    {% if oi.is_cooked %}
-                    <span class="cook-item-status-done">Готово</span>
-                    {% else %}
-                    {% if order_item_can_cook.get(oi.id, false) %}
-                    <a href="{{ url_for('cook_item', oi_id=oi.id) }}" class="btn-small btn-cook cook-item-btn" data-url="/api/cook_item/{{ oi.id }}">Приготовить</a>
-                    {% else %}
-                    <span class="cook-item-no-stock">Нет продуктов</span>
-                    {% endif %}
-                    {% endif %}
+            <div style="display: grid; gap: 20px;">
+            {% for order in orders %}
+                <div class="card" style="border-top: 4px solid var(--warning-text); margin: 0;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-weight: 800; font-size: 18px;">#{{ order.id }}</span>
+                            <span style="color: #999; margin-left: 10px;">{{ order.created_at.strftime('%H:%M') }}</span>
+                        </div>
+                        <div style="font-weight: 600;">
+                            {{ order.user.full_name or order.user.username }}
+                            <span class="badge" style="background: #eee; margin-left: 10px;">
+                                {{ 'ЗАВТРАК' if order.meal_type == 'breakfast' else 'ОБЕД' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        {% for oi in order.items %}
+                        <div class="cook-item-row {% if oi.is_cooked %}cooked{% endif %}" data-oi-id="{{ oi.id }}">
+                            <span style="font-weight: 500;">{{ oi.menu_item.name }}</span>
+
+                            {% if oi.is_cooked %}
+                                <span style="font-size: 12px; font-weight: 700; color: #50cd89;">ГОТОВО</span>
+                            {% else %}
+                                {% if order_item_can_cook.get(oi.id, false) %}
+                                    <a href="{{ url_for('cook_item', oi_id=oi.id) }}" class="btn btn-small" style="background: #e4e6ef; color: #181c32;" data-url="/api/cook_item/{{ oi.id }}">
+                                        Приготовить
+                                    </a>
+                                {% else %}
+                                    <span class="badge badge-danger">НЕТ ИНГРЕДИЕНТОВ</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% set ns = namespace(fully_cooked=true) %}
+                    {% for oi in order.items %}
+                        {% if not oi.is_cooked %}{% set ns.fully_cooked = false %}{% endif %}
+                    {% endfor %}
+
+                    <div class="cook-order-ready" style="margin-top: 15px; text-align: right; {% if not ns.fully_cooked %}display:none;{% endif %}">
+                        <a href="{{ url_for('prepare_order', order_id=order.id) }}" class="btn btn-success" data-url="/api/prepare_order/{{ order.id }}">
+                            ВЕСЬ ЗАКАЗ ГОТОВ
+                        </a>
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-            {% set ns = namespace(fully_cooked=true) %}
-            {% for oi in order.items %}
-                {% if not oi.is_cooked %}{% set ns.fully_cooked = false %}{% endif %}
             {% endfor %}
-            <div class="cook-order-ready" {% if not ns.fully_cooked %}style="display:none"{% endif %}>
-                <a href="{{ url_for('prepare_order', order_id=order.id) }}" class="btn btn-success prepare-order-btn" data-url="/api/prepare_order/{{ order.id }}">Заказ готов к выдаче</a>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 40px; color: #999;">
+                Нет активных заказов
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ФОРМА ЗАЯВКИ НА ПРОДУКТЫ (Восстановлена) -->
+    <div class="section">
+        <h2>Заказать продукты</h2>
+        <form method="POST" action="{{ url_for('add_request') }}" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 200px;">
+                <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Выберите продукт</label>
+                <select name="product_id" required style="margin-bottom: 0;">
+                    <option value="">-- Список продуктов --</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}">{{ product.name }} ({{ product.unit }}) - Остаток: {{ product.quantity|round(2) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+                <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Количество</label>
+                <input type="number" name="quantity" placeholder="0" min="0.1" step="0.1" required style="margin-bottom: 0;">
+            </div>
+            <div style="flex: 0 0 auto;">
+                <button type="submit" class="btn-success">Отправить заявку</button>
+            </div>
+        </form>
+
+        <!-- Мои текущие заявки -->
+        <div style="margin-top: 20px;">
+            <div class="collapsible-header" onclick="document.getElementById('my-requests').classList.toggle('collapsed')">
+                <span style="font-weight: 600; color: #7e8299;">Мои активные заявки ({% if my_requests %}{{ my_requests|length }}{% else %}0{% endif %})</span>
+            </div>
+            <div class="collapsible-body collapsed" id="my-requests">
+                {% if my_requests %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Продукт</th>
+                                <th>Кол-во</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for req in my_requests %}
+                            <tr>
+                                <td>{{ req.date.strftime('%d.%m') }}</td>
+                                <td>{{ req.product.name }}</td>
+                                <td>{{ req.quantity }}</td>
+                                <td>
+                                    {% if req.status == 'pending' %}
+                                        <span class="badge badge-warning">На рассмотрении</span>
+                                    {% elif req.status == 'approved' %}
+                                        <span class="badge badge-success">Одобрено</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Отклонено</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p style="color: #999; margin-top: 10px;">Нет активных заявок</p>
+                {% endif %}
             </div>
         </div>
-        {% endfor %}
-        {% else %}
-        <p>Нет заказов к приготовлению</p>
-        {% endif %}
     </div>
 
+    <!-- СКЛАД -->
     <div class="section">
-        <h2>Остатки продуктов</h2>
-        <table>
-            <tr><th>Продукт</th><th>Количество</th><th>Ед.</th></tr>
-            {% for product in products %}
-            <tr class="{% if 10 > product.quantity %}low-stock{% endif %}">
-                <td>{{ product.name }}</td>
-                <td>{% if product.unit == 'шт' %}{{ product.quantity | round(0) | int }}{% else %}{{ product.quantity | round(2) }}{% endif %}</td>
-                <td>{{ product.unit }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <div class="section">
-        <h2>Создать заявку на закупку</h2>
-        <form method="POST" action="{{ url_for('add_request') }}" class="inline-form">
-            <select name="product_id" required>
-                <option value="">Выберите продукт</option>
+        <div class="collapsible-header" onclick="document.getElementById('stock-body').classList.toggle('collapsed')">
+            <h2>Остатки продуктов (Справочно)</h2>
+        </div>
+        <div class="collapsible-body collapsed" id="stock-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Продукт</th>
+                        <th>Остаток</th>
+                        <th>Ед. изм.</th>
+                    </tr>
+                </thead>
+                <tbody>
                 {% for product in products %}
-                <option value="{{ product.id }}">{{ product.name }}</option>
+                    <tr {% if 10 > product.quantity %}style="background: #fff5f8;"{% endif %}>
+                        <td>{{ product.name }}</td>
+                        <td>
+                            <span style="font-weight: 700; {% if 10 > product.quantity %}color: #f1416c;{% endif %}">
+                                {% if product.unit == 'шт' %}
+                                    {{ product.quantity | round(0) | int }}
+                                {% else %}
+                                    {{ product.quantity | round(2) }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ product.unit }}</td>
+                    </tr>
                 {% endfor %}
-            </select>
-            <input type="number" name="quantity" placeholder="Количество" min="1" required>
-            <button type="submit">Создать заявку</button>
-        </form>
-    </div>
-
-    <div class="section">
-        <h2>Мои заявки</h2>
-        {% if my_requests %}
-        <table>
-            <tr><th>Дата</th><th>Продукт</th><th>Кол-во</th><th>Статус</th></tr>
-            {% for req in my_requests %}
-            <tr>
-                <td>{{ req.date.strftime('%d.%m.%Y') }}</td>
-                <td>{{ req.product.name }}</td>
-                <td>{{ req.quantity }}</td>
-                <td>{% if req.status == 'pending' %}На рассмотрении{% elif req.status == 'approved' %}Одобрена{% else %}Отклонена{% endif %}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p>Заявок нет</p>
-        {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

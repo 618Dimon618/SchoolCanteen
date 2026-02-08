@@ -1,205 +1,239 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="dashboard">
-    <h1>Привет, {{ user.full_name or user.username }}!</h1>
+<div>
+    <h1>Личный кабинет</h1>
 
-    <div class="user-info">
-        <div class="info-card">
-            <h3>Баланс: <span class="balance-amount">{{ user.balance }} руб.</span></h3>
-            <form method="POST" action="{{ url_for('add_balance_route') }}" class="inline-form balance-form">
-                <input type="number" name="amount" placeholder="Сумма" min="1" step="1" required>
-                <button type="submit">Пополнить</button>
-            </form>
+    <!-- Статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Баланс счета</h3>
+            <div class="big-number">{{ user.balance }} ₽</div>
+            <button onclick="openModal()" class="btn-small" style="margin-top: 10px; width: 100%;">Пополнить</button>
         </div>
-        <div class="info-card">
-            <h3>Абонементы</h3>
-            <p>Завтраки: <span class="sub-breakfast">{{ breakfast_sub.meals_left if breakfast_sub else 0 }}</span></p>
-            <p>Обеды: <span class="sub-lunch">{{ lunch_sub.meals_left if lunch_sub else 0 }}</span></p>
+        <div class="stat-card">
+            <h3>Абонемент Завтрак</h3>
+            <div class="big-number">{{ breakfast_sub.meals_left if breakfast_sub else 0 }}</div>
+            <p style="font-size: 12px; color: #b5b5c3;">доступных посещений</p>
+        </div>
+        <div class="stat-card">
+            <h3>Абонемент Обед</h3>
+            <div class="big-number">{{ lunch_sub.meals_left if lunch_sub else 0 }}</div>
+            <p style="font-size: 12px; color: #b5b5c3;">доступных посещений</p>
         </div>
     </div>
 
-    <div class="subscription-buy">
-        <h3>Купить абонемент</h3>
-        <div class="sub-forms">
-            <form method="POST" action="{{ url_for('buy_subscription') }}" class="inline-form">
-                <input type="hidden" name="meal_type" value="breakfast">
-                <select name="count">
-                    <option value="5">5 завтраков (500 руб.)</option>
-                    <option value="20">20 завтраков (2000 руб.)</option>
-                </select>
-                <button type="submit">Купить</button>
-            </form>
-            <form method="POST" action="{{ url_for('buy_subscription') }}" class="inline-form">
-                <input type="hidden" name="meal_type" value="lunch">
-                <select name="count">
-                    <option value="5">5 обедов (750 руб.)</option>
-                    <option value="20">20 обедов (3000 руб.)</option>
-                </select>
-                <button type="submit">Купить</button>
-            </form>
+    <!-- Покупка абонементов -->
+    <div class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>Магазин абонементов</h2>
         </div>
-    </div>
-
-    <div class="menu-section">
-        <div class="collapsible-header" onclick="toggleSection('breakfast-section')">
-            <h2>Завтрак</h2>
-            <span class="collapse-icon" id="breakfast-section-icon">&#9660;</span>
-        </div>
-        <div class="collapsible-body collapsed" id="breakfast-section">
-            <p><small>Время завтрака: 08:00 - 08:30. Выберите по одному блюду из каждой категории.</small></p>
-            {% if breakfast_menu %}
-            <form method="POST" action="{{ url_for('order') }}" class="order-form">
-                <input type="hidden" name="meal_type" value="breakfast">
-                {% for category, items in breakfast_menu.items() %}
-                <div class="category">
-                    <h4>{{ category.name }}</h4>
-                    <div class="items">
-                        {% for item in items %}
-                        {% set is_unavailable = item.id in unavailable_ids %}
-                        {% set item_allergens = menu_allergies.get(item.id, []) %}
-                        {% set matching_allergens = [] %}
-                        {% for a in item_allergens %}
-                        {% if a.id in user_allergies %}
-                        {% if matching_allergens.append(a) %}{% endif %}
-                        {% endif %}
-                        {% endfor %}
-                        <label class="item {% if is_unavailable %}unavailable{% endif %} {% if matching_allergens %}has-allergy{% endif %}">
-                            <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %}>
-                            <span class="item-name">{{ item.name }}</span>
-                            <span class="item-price">{{ item.price }} руб.</span>
-                            {% if is_unavailable %}
-                            <span class="item-unavailable-badge">Недоступно</span>
-                            {% endif %}
-                            {% if matching_allergens %}
-                            <span class="allergens">Аллерген: {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-                            {% endif %}
-                        </label>
-                        {% endfor %}
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+                <form method="POST" action="{{ url_for('buy_subscription') }}">
+                    <input type="hidden" name="meal_type" value="breakfast">
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Пакет завтраков (по 100₽)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select name="count" style="margin-bottom: 0;">
+                            <option value="5">5 шт. - 500 ₽</option>
+                            <option value="20">20 шт. - 2000 ₽</option>
+                        </select>
+                        <button type="submit" class="btn-small">Купить</button>
                     </div>
-                </div>
-                {% endfor %}
-                <div class="order-options">
-                    <label>
-                        <input type="checkbox" name="use_subscription" value="1" {% if not breakfast_sub or breakfast_sub.meals_left == 0 %}disabled{% endif %}>
-                        Использовать абонемент (осталось: {{ breakfast_sub.meals_left if breakfast_sub else 0 }})
-                    </label>
-                </div>
-                <button type="submit" class="order-btn">Заказать завтрак</button>
-            </form>
-            {% else %}
-            <p>Меню пока не добавлено</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="menu-section">
-        <div class="collapsible-header" onclick="toggleSection('lunch-section')">
-            <h2>Обед</h2>
-            <span class="collapse-icon" id="lunch-section-icon">&#9660;</span>
-        </div>
-        <div class="collapsible-body collapsed" id="lunch-section">
-            <p><small>Время обеда: 13:00 - 14:00. Выберите по одному блюду из каждой категории.</small></p>
-            {% if lunch_menu %}
-            <form method="POST" action="{{ url_for('order') }}" class="order-form">
-                <input type="hidden" name="meal_type" value="lunch">
-                {% for category, items in lunch_menu.items() %}
-                <div class="category">
-                    <h4>{{ category.name }}</h4>
-                    <div class="items">
-                        {% for item in items %}
-                        {% set is_unavailable = item.id in unavailable_ids %}
-                        {% set item_allergens = menu_allergies.get(item.id, []) %}
-                        {% set matching_allergens = [] %}
-                        {% for a in item_allergens %}
-                        {% if a.id in user_allergies %}
-                        {% if matching_allergens.append(a) %}{% endif %}
-                        {% endif %}
-                        {% endfor %}
-                        <label class="item {% if is_unavailable %}unavailable{% endif %} {% if matching_allergens %}has-allergy{% endif %}">
-                            <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %}>
-                            <span class="item-name">{{ item.name }}</span>
-                            <span class="item-price">{{ item.price }} руб.</span>
-                            {% if is_unavailable %}
-                            <span class="item-unavailable-badge">Недоступно</span>
-                            {% endif %}
-                            {% if matching_allergens %}
-                            <span class="allergens">Аллерген: {% for a in matching_allergens %}{{ a.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-                            {% endif %}
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-                <div class="order-options">
-                    <label>
-                        <input type="checkbox" name="use_subscription" value="1" {% if not lunch_sub or lunch_sub.meals_left == 0 %}disabled{% endif %}>
-                        Использовать абонемент (осталось: {{ lunch_sub.meals_left if lunch_sub else 0 }})
-                    </label>
-                </div>
-                <button type="submit" class="order-btn">Заказать обед</button>
-            </form>
-            {% else %}
-            <p>Меню пока не добавлено</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="orders-section">
-        <div class="collapsible-header" onclick="toggleSection('orders-section')">
-            <h2>Мои заказы</h2>
-            <span class="collapse-icon" id="orders-section-icon">&#9660;</span>
-        </div>
-        <div class="collapsible-body collapsed" id="orders-section">
-            {% if orders %}
-            {% for order in orders %}
-            <div class="order-card">
-                <div class="order-header-info">
-                    <span><strong>{{ order.date }}</strong></span>
-                    <span>{{ 'Завтрак' if order.meal_type == 'breakfast' else 'Обед' }}</span>
-                    <span>{{ 'Абонемент' if order.is_subscription else 'Оплата' }}</span>
-                    <span>
-                        {% if order.is_received %}Получен
-                        {% elif order.is_prepared %}Готов
-                        {% else %}Готовится{% endif %}
-                    </span>
-                    {% if order.is_prepared and not order.is_received %}
-                    <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn-small btn-success">Получить</a>
-                    {% endif %}
-                </div>
-                <div class="order-items-list">
-                    {% if order.is_subscription %}
-                        {% for oi in order.items %}
-                            <span class="order-item-tag">{{ oi.menu_item.name }}</span>
-                        {% endfor %}
-                        <span class="order-total-tag">{{ sub_prices.get(order.meal_type, 100) }} руб. (абонемент)</span>
-                    {% else %}
-                        {% set ns = namespace(total=0) %}
-                        {% for oi in order.items %}
-                            {% set ns.total = ns.total + oi.price %}
-                            <span class="order-item-tag">{{ oi.menu_item.name }} - {{ oi.price }} руб.</span>
-                        {% endfor %}
-                        <span class="order-total-tag">Итого: {{ ns.total }} руб.</span>
-                    {% endif %}
-                </div>
+                </form>
             </div>
-            {% endfor %}
+            <div style="flex: 1; min-width: 250px;">
+                <form method="POST" action="{{ url_for('buy_subscription') }}">
+                    <input type="hidden" name="meal_type" value="lunch">
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Пакет обедов (по 150₽)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select name="count" style="margin-bottom: 0;">
+                            <option value="5">5 шт. - 750 ₽</option>
+                            <option value="20">20 шт. - 3000 ₽</option>
+                        </select>
+                        <button type="submit" class="btn-small">Купить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- МЕНЮ (Общий код для Завтрака и Обеда) -->
+    {% for meal_id, meal_title, menu_items, sub_obj in [
+        ('breakfast', 'Меню: Завтрак', breakfast_menu, breakfast_sub),
+        ('lunch', 'Меню: Обед', lunch_menu, lunch_sub)
+    ] %}
+    <div class="menu-section">
+        <div class="collapsible-header" onclick="document.getElementById('{{ meal_id }}-body').classList.toggle('collapsed')">
+            <h2 style="margin: 0;">{{ meal_title }}</h2>
+            <span style="font-size: 12px; font-weight: 600; color: #7e8299;">
+                {{ '08:00 - 08:30' if meal_id == 'breakfast' else '13:00 - 14:00' }}
+            </span>
+        </div>
+
+        <div class="collapsible-body collapsed" id="{{ meal_id }}-body">
+            {% if menu_items %}
+                <form method="POST" action="{{ url_for('order') }}">
+                    <input type="hidden" name="meal_type" value="{{ meal_id }}">
+
+                    {% for category, items in menu_items.items() %}
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: var(--primary); margin-bottom: 10px; font-weight: 700;">{{ category.name }}</h4>
+                            <div class="items">
+                                {% for item in items %}
+                                    {% set is_unavailable = item.id in unavailable_ids %}
+                                    {% set matching_allergens = [] %}
+                                    {% for a in menu_allergies.get(item.id, []) %}
+                                        {% if a.id in user_allergies %}{% if matching_allergens.append(a.name) %}{% endif %}{% endif %}
+                                    {% endfor %}
+
+                                    <label class="item {% if is_unavailable %}unavailable{% endif %}">
+                                        <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %}>
+
+                                        <div style="margin-left: 25px;">
+                                            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                                                <span class="item-name">{{ item.name }}</span>
+                                                <a href="{{ url_for('toggle_favorite', item_id=item.id) }}" style="text-decoration:none; font-size:16px; color: #f1416c;">♥</a>
+                                            </div>
+                                            <span class="item-price">{{ item.price }} ₽</span>
+
+                                            {% if is_unavailable %}
+                                                <div class="badge badge-danger">НЕТ В НАЛИЧИИ</div>
+                                            {% endif %}
+
+                                            {% if matching_allergens %}
+                                                <div class="badge badge-warning" style="white-space: normal; line-height: 1.2;">
+                                                    Аллергены: {{ matching_allergens|join(', ') }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <div style="margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" name="use_subscription" value="1" style="width: auto; margin-right: 10px; margin-bottom: 0;" {% if not sub_obj or sub_obj.meals_left == 0 %}disabled{% endif %}>
+                            <span style="font-weight: 600;">Списать с абонемента ({{ sub_obj.meals_left if sub_obj else 0 }} ост.)</span>
+                        </label>
+                        <button type="submit">Оформить заказ</button>
+                    </div>
+                </form>
             {% else %}
-            <p>Заказов пока нет</p>
+                <p style="padding: 20px; text-align: center; color: #999;">Меню еще не сформировано</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="section">
+        <div class="collapsible-header" onclick="document.getElementById('history-body').classList.toggle('collapsed')">
+            <h2 style="margin: 0;">Мои заказы</h2>
+        </div>
+        <div class="collapsible-body collapsed" id="history-body">
+            {% if orders %}
+                <div style="display: grid; gap: 15px;">
+                {% for order in orders %}
+                    <div class="card" style="margin-bottom: 0; padding: 15px; border-left: 4px solid {% if order.is_received %}#50cd89{% elif order.is_prepared %}#6366f1{% else %}#ffc700{% endif %};">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-weight: 700; font-size: 16px; color: #3f4254;">Заказ #{{ order.id }}</span>
+                                <span style="color: #999; font-size: 13px; margin-left: 10px;">{{ order.date }}</span>
+                            </div>
+
+                            <div style="font-size: 18px; font-weight: 800; color: var(--text-dark);">
+                                {% if order.is_subscription %}
+                                    {{ sub_prices[order.meal_type] }} ₽
+                                    <span style="font-size: 12px; color: #999; font-weight: normal;">(абон.)</span>
+                                {% else %}
+                                    {% set ns = namespace(total=0) %}
+                                    {% for item in order.items %}
+                                        {% set ns.total = ns.total + item.price %}
+                                    {% endfor %}
+                                    {{ ns.total }} ₽
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                             <div class="badge {% if order.is_received %}badge-success{% elif order.is_prepared %}badge-primary{% else %}badge-warning{% endif %}" style="margin: 0;">
+                                {% if order.is_received %}ВЫДАН{% elif order.is_prepared %}ГОТОВ К ВЫДАЧЕ{% else %}ГОТОВИТСЯ{% endif %}
+                            </div>
+                        </div>
+
+                        <div style="font-size: 13px; color: #5e6278;">
+                            {% for oi in order.items %}
+                                <span style="margin-right: 10px; background: #f5f8fa; padding: 3px 6px; border-radius: 4px;">{{ oi.menu_item.name }}</span>
+                            {% endfor %}
+                        </div>
+
+                        {% if order.is_prepared and not order.is_received %}
+                            <div style="margin-top: 10px; text-align: right;">
+                                <a href="{{ url_for('receive_order', order_id=order.id) }}" class="btn btn-small btn-success">Подтвердить получение</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: #999; text-align: center;">История заказов пуста</p>
             {% endif %}
         </div>
     </div>
 </div>
 
+<!-- МОДАЛЬНОЕ ОКНО ОПЛАТЫ -->
+<div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; padding:30px; border-radius:12px; width:400px; position:relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <span onclick="closeModal()" style="position:absolute; top:15px; right:20px; font-size:24px; cursor:pointer; color:#999;">&times;</span>
+
+        <h2 style="margin-top:0; border-bottom:none;">Пополнение баланса</h2>
+        <p style="color:#7e8299; font-size:13px; margin-bottom:20px;">Введите данные банковской карты для безопасного пополнения.</p>
+
+        <form method="POST" action="{{ url_for('add_balance_route') }}">
+            <!-- Номер карты -->
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight:600; font-size:12px; color:#3f4254; display:block; margin-bottom:5px;">Номер карты</label>
+                <input type="text" name="card_num" placeholder="0000 0000 0000 0000" maxlength="19" required style="font-family:monospace; letter-spacing:1px; font-size:16px;">
+            </div>
+
+            <!-- Срок и CVC в ряд -->
+            <div style="display:flex; gap:15px; margin-bottom: 15px;">
+                <div style="flex:1;">
+                    <label style="font-weight:600; font-size:12px; color:#3f4254; display:block; margin-bottom:5px;">Срок</label>
+                    <input type="text" name="expiry" placeholder="MM/YY" maxlength="5" required style="text-align:center;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-weight:600; font-size:12px; color:#3f4254; display:block; margin-bottom:5px;">CVC</label>
+                    <input type="password" name="cvc" placeholder="123" maxlength="3" required style="text-align:center;">
+                </div>
+            </div>
+
+            <!-- Сумма отдельной строкой -->
+            <div style="margin-bottom: 25px;">
+                <label style="font-weight:600; font-size:12px; color:#3f4254; display:block; margin-bottom:5px;">Сумма пополнения (₽)</label>
+                <input type="number" name="amount" placeholder="0" min="1" step="1" required style="font-size:18px; font-weight:bold; color:var(--primary);">
+            </div>
+
+            <button type="submit" style="width:100%; height:50px; font-size:16px;">Оплатить</button>
+        </form>
+    </div>
+</div>
+
 <script>
-function toggleSection(id) {
-    var body = document.getElementById(id);
-    var icon = document.getElementById(id + '-icon');
-    if (body.classList.contains('collapsed')) {
-        body.classList.remove('collapsed');
-        icon.innerHTML = '&#9650;';
-    } else {
-        body.classList.add('collapsed');
-        icon.innerHTML = '&#9660;';
+function openModal() {
+    document.getElementById('paymentModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+// Закрытие при клике вне окна
+window.onclick = function(event) {
+    var modal = document.getElementById('paymentModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
     }
 }
 </script>

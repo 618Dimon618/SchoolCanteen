@@ -1,16 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="auth-container">
-    <h1>Вход</h1>
+    <h2 style="margin-bottom: 5px;">Вход в систему</h2>
+    <p style="color: #7e8299; margin-bottom: 30px;">Введите логин и пароль для доступа</p>
+
     <form method="POST">
-        <input type="text" name="username" placeholder="Логин" required>
-        <input type="password" name="password" placeholder="Пароль" required>
-        <div class="captcha-block">
-            <label>{{ captcha_a }} + {{ captcha_b }} = ?</label>
-            <input type="number" name="captcha_answer" placeholder="Ответ" required>
-        </div>
-        <button type="submit">Войти</button>
+        <div style="text-align: left; margin-bottom: 5px; font-weight: 600; font-size: 12px; color: #3f4254;">Логин</div>
+        <input type="text" name="username" required placeholder="Ваш логин">
+
+        <div style="text-align: left; margin-bottom: 5px; font-weight: 600; font-size: 12px; color: #3f4254;">Пароль</div>
+        <input type="password" name="password" required placeholder="Ваш пароль">
+
+        <button type="submit" style="width: 100%; margin-top: 20px;">Войти</button>
     </form>
-    <p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
+
+    <div style="margin-top: 30px; font-size: 13px;">
+        <span style="color: #7e8299;">Нет аккаунта?</span>
+        <a href="{{ url_for('register') }}" style="color: var(--primary); font-weight: 600;">Создать аккаунт</a>
+    </div>
 </div>
 {% endblock %}

@@ -1,27 +1,58 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="dashboard">
-    <h1>Профиль</h1>
+<div style="max-width: 600px;">
+    <h1>Мой профиль</h1>
 
-    <div class="section">
-        <h2>👤 Личные данные</h2>
-        <div class="profile-info">
-            <p><strong>Логин:</strong> {{ user.username }}</p>
-            <p><strong>ФИО:</strong> {{ user.full_name or '-' }}</p>
-            <p><strong>Класс:</strong> {{ user.class_name or '-' }}</p>
-            <p><strong>Баланс:</strong> {{ user.balance }} ₽</p>
-            <p><strong>Роль:</strong> {% if user.role == 'student' %}Ученик{% elif user.role == 'cook' %}Повар{% elif user.role == 'admin' %}Администратор{% else %}{{ user.role }}{% endif %}</p>
+    <div class="card">
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <div style="width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin-right: 20px;">
+                {{ user.username[0] | upper }}
+            </div>
+            <div>
+                <h2 style="margin: 0;">{{ user.full_name or user.username }}</h2>
+                <span style="color: #999;">
+                    {% if user.role == 'student' %}Ученик{% elif user.role == 'cook' %}Повар{% else %}Админ{% endif %}
+                    {% if user.class_name %} &middot; {{ user.class_name }}{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #7e8299;">Логин:</span>
+                <span style="font-weight: 600;">{{ user.username }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #7e8299;">ID:</span>
+                <span style="font-weight: 600;">#{{ user.id }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #7e8299;">Текущий баланс:</span>
+                <span style="font-weight: 600; color: var(--success-text);">{{ user.balance }} ₽</span>
+            </div>
         </div>
     </div>
 
+    <!-- Аллергии -->
     <div class="section">
-        <h2>⚠️ Мои аллергии</h2>
-        <p>Отметьте продукты, на которые у вас аллергия. Блюда с этими аллергенами будут подсвечены в меню.</p>
-        <div class="allergies-list">
+        <h2>Пищевые ограничения</h2>
+        <p style="color: #7e8299; font-size: 13px; margin-bottom: 15px;">
+            Отметьте продукты, на которые у вас аллергия. Мы будем предупреждать вас в меню.
+        </p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
             {% for allergy in allergies %}
-            <a href="{{ url_for('toggle_allergy', allergy_id=allergy.id) }}" class="allergy-tag {% if allergy.id in user_allergies %}active{% endif %}">
-                {{ allergy.name }}
-            </a>
+                <a href="{{ url_for('toggle_allergy', allergy_id=allergy.id) }}"
+                   class="btn-small"
+                   style="border-radius: 20px; transition: 0.2s; text-decoration: none;
+                          {% if allergy.id in user_allergies %}
+                              background: var(--danger-text); color: white; border: 1px solid var(--danger-text);
+                          {% else %}
+                              background: white; color: var(--text-dark); border: 1px solid #e4e6ef;
+                          {% endif %}">
+                   {{ allergy.name }}
+                   {% if allergy.id in user_allergies %} ✓{% endif %}
+                </a>
             {% endfor %}
         </div>
     </div>

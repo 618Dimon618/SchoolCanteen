@@ -1,21 +1,32 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="dashboard">
-    <h1>🔔 Уведомления</h1>
-    
+<div style="max-width: 700px;">
+    <h1>Центр уведомлений</h1>
+
     {% if notifications %}
-    <div class="notifications-list">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
         {% for notif in notifications %}
-        <div class="notification {% if not notif.is_read %}unread{% endif %}">
-            <div class="notif-text">{{ notif.text }}</div>
-            <div class="notif-date">{{ notif.date.strftime('%d.%m.%Y %H:%M') }}</div>
-        </div>
+            <div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #eff2f5; border-left: 4px solid {% if not notif.is_read %}var(--primary){% else %}#e4e6ef{% endif %}; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                <div style="font-size: 14px; color: #3f4254; margin-bottom: 5px;">
+                    {{ notif.text }}
+                </div>
+                <div style="font-size: 11px; color: #999; text-align: right;">
+                    {{ notif.date.strftime('%d.%m.%Y %H:%M') }}
+                    {% if not notif.is_read %}
+                        <span style="color: var(--primary); font-weight: bold; margin-left: 5px;">• Новое</span>
+                    {% endif %}
+                </div>
+            </div>
         {% endfor %}
-    </div>
+        </div>
     {% else %}
-    <p>Уведомлений нет</p>
+        <div class="card" style="text-align: center; padding: 40px; color: #999;">
+            У вас нет уведомлений
+        </div>
     {% endif %}
-    
-    <a href="{{ url_for('index') }}" class="btn">Назад</a>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('index') }}" style="color: var(--text-gray); text-decoration: none; font-size: 14px;">← Вернуться на главную</a>
+    </div>
 </div>
 {% endblock %}

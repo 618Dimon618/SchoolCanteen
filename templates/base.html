@@ -3,48 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>Школьная столовая</title>
+    <title>Школьное Питание</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav>
-        <div class="nav-brand">Школьная столовая</div>
-        {% if session.get('user_id') %}
+
+    {% if session.get('user_id') %}
+    <!-- Sidebar (только для авторизованных) -->
+    <aside class="sidebar">
+        <div class="brand">Canteen v2.0</div>
+
         <div class="nav-links">
             {% if session.get('role') == 'student' %}
-            <a href="{{ url_for('student') }}">Меню</a>
-            <a href="{{ url_for('profile') }}">Профиль</a>
-            <a href="{{ url_for('reviews') }}">Отзывы</a>
-            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+                <a href="{{ url_for('student') }}">МЕНЮ</a>
+                <a href="{{ url_for('profile') }}">ПРОФИЛЬ</a>
+                <a href="{{ url_for('reviews') }}">ОТЗЫВЫ</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ {% if unread_count %}({{ unread_count }}){% endif %}</a>
             {% elif session.get('role') == 'cook' %}
-            <a href="{{ url_for('cook') }}">Заказы</a>
-            <a href="{{ url_for('cook_dishes') }}">Блюда</a>
-            <a href="{{ url_for('cook_issued') }}">Посещение</a>
-            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+                <a href="{{ url_for('cook') }}">ЗАКАЗЫ</a>
+                <a href="{{ url_for('cook_dishes') }}">БЛЮДА</a>
+                <a href="{{ url_for('cook_issued') }}">ВЫДАЧА</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ</a>
             {% elif session.get('role') == 'admin' %}
-            <a href="{{ url_for('admin') }}">Панель админа</a>
-            <a href="{{ url_for('notifications') }}">Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+                <a href="{{ url_for('admin') }}">УПРАВЛЕНИЕ</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ</a>
             {% endif %}
-            <a href="{{ url_for('logout') }}">Выход</a>
         </div>
-        {% endif %}
-    </nav>
-    <main>
-        <div id="flash-container"></div>
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="flash-messages">
-            {% for msg in messages %}
-            <div class="flash">{{ msg }}</div>
-            {% endfor %}
+
+        <div class="nav-footer">
+            <a href="{{ url_for('logout') }}" style="color: #f1416c;">ВЫХОД</a>
         </div>
-        {% endif %}
-        {% endwith %}
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="{% if session.get('user_id') %}main-content{% else %}auth-wrapper{% endif %}">
+
+        <!-- Flash Messages -->
+        <div id="flash-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div style="background: #333; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
         {% block content %}{% endblock %}
     </main>
+
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

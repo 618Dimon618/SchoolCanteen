@@ -1,91 +1,93 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="dashboard">
-    <h1>Выданные заказы</h1>
+<div>
+    <h1>Отчет о выдаче (Сегодня)</h1>
 
     <div class="stats-grid">
         <div class="stat-card">
-            <h3>Завтраки выдано</h3>
-            <p class="big-number">{{ breakfast_issued|length }}</p>
+            <h3>Завтраки (Факт)</h3>
+            <div class="big-number">{{ breakfast_issued|length }}</div>
         </div>
         <div class="stat-card">
-            <h3>Обеды выдано</h3>
-            <p class="big-number">{{ lunch_issued|length }}</p>
-        </div>
-        <div class="stat-card">
-            <h3>Всего выдано</h3>
-            <p class="big-number">{{ issued_orders|length }}</p>
+            <h3>Обеды (Факт)</h3>
+            <div class="big-number">{{ lunch_issued|length }}</div>
         </div>
     </div>
 
     <div class="section">
-        <h2 class="collapsible-header" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed');">
-            Завтраки ({{ breakfast_issued|length }}) <span class="collapse-icon">&#9660;</span>
-        </h2>
-        <div class="collapsible-body">
-            {% if breakfast_issued %}
-            <table>
-                <tr>
-                    <th>N заказа</th>
-                    <th>Дата</th>
-                    <th>Ученик</th>
-                    <th>Класс</th>
-                    <th>Блюда</th>
-                    <th>Оплата</th>
-                </tr>
-                {% for o in breakfast_issued %}
-                <tr>
-                    <td>{{ o.id }}</td>
-                    <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
-                    <td>{{ o.user.full_name or o.user.username }}</td>
-                    <td>{{ o.user.class_name or '-' }}</td>
-                    <td>
-                        {% for oi in o.items %}
-                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
-                        {% endfor %}
-                    </td>
-                    <td>{{ 'Абонемент' if o.is_subscription else 'Разовая' }}</td>
-                </tr>
+        <h2 style="color: var(--primary);">Расход блюд за сегодня</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+            {% if dish_stats %}
+                {% for name, count in dish_stats.items() %}
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eff2f5;">
+                    <span style="font-weight: 600; color: #3f4254;">{{ name }}</span>
+                    <span class="badge badge-success" style="font-size: 14px;">{{ count }} шт.</span>
+                </div>
                 {% endfor %}
-            </table>
             {% else %}
-            <p>Нет выданных завтраков</p>
+                <p style="color: #999;">Выдачи сегодня еще не было</p>
             {% endif %}
         </div>
     </div>
 
     <div class="section">
-        <h2 class="collapsible-header" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed');">
-            Обеды ({{ lunch_issued|length }}) <span class="collapse-icon">&#9660;</span>
-        </h2>
-        <div class="collapsible-body">
-            {% if lunch_issued %}
-            <table>
-                <tr>
-                    <th>N заказа</th>
-                    <th>Дата</th>
-                    <th>Ученик</th>
-                    <th>Класс</th>
-                    <th>Блюда</th>
-                    <th>Оплата</th>
-                </tr>
-                {% for o in lunch_issued %}
-                <tr>
-                    <td>{{ o.id }}</td>
-                    <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
-                    <td>{{ o.user.full_name or o.user.username }}</td>
-                    <td>{{ o.user.class_name or '-' }}</td>
-                    <td>
-                        {% for oi in o.items %}
-                        <span class="order-item-tag">{{ oi.menu_item.name }}</span>
-                        {% endfor %}
-                    </td>
-                    <td>{{ 'Абонемент' if o.is_subscription else 'Разовая' }}</td>
-                </tr>
-                {% endfor %}
-            </table>
+        <div class="collapsible-header" onclick="document.getElementById('b-issued').classList.toggle('collapsed')">
+            <h2>Детализация: Завтраки</h2>
+        </div>
+        <div class="collapsible-body collapsed" id="b-issued">
+            {% if breakfast_issued %}
+                <table>
+                    <thead>
+                        <tr><th>Время</th><th>Ученик</th><th>Класс</th><th>Блюда</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for o in breakfast_issued %}
+                        <tr>
+                            <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ o.user.full_name or o.user.username }}</td>
+                            <td>{{ o.user.class_name or '-' }}</td>
+                            <td>
+                                {% for oi in o.items %}
+                                    <span style="background:#f1f1f1; padding:2px 5px; border-radius:4px; font-size:12px;">{{ oi.menu_item.name }}</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             {% else %}
-            <p>Нет выданных обедов</p>
+                <p style="color:#999;">Пусто</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="collapsible-header" onclick="document.getElementById('l-issued').classList.toggle('collapsed')">
+            <h2>Детализация: Обеды</h2>
+        </div>
+        <div class="collapsible-body collapsed" id="l-issued">
+            {% if lunch_issued %}
+                <table>
+                    <thead>
+                        <tr><th>Время</th><th>Ученик</th><th>Класс</th><th>Блюда</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for o in lunch_issued %}
+                        <tr>
+                            <td>{{ o.date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ o.user.full_name or o.user.username }}</td>
+                            <td>{{ o.user.class_name or '-' }}</td>
+                            <td>
+                                {% for oi in o.items %}
+                                    <span style="background:#f1f1f1; padding:2px 5px; border-radius:4px; font-size:12px;">{{ oi.menu_item.name }}</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="color:#999;">Пусто</p>
             {% endif %}
         </div>
     </div>
