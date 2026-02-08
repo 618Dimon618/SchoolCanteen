@@ -121,3 +121,7 @@ class Notification(db.Model):
     text = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     date = db.Column(db.DateTime, default=datetime.now)
+class Favorite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'))
