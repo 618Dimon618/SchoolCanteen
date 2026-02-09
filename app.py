@@ -139,7 +139,6 @@ def register():
             return redirect(url_for('login'))
     return render_template('register.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
@@ -191,10 +190,9 @@ def order():
     meal_type = request.form.get('meal_type')
     use_sub = request.form.get('use_subscription') == '1'
 
-    # Собираем отмеченные чекбоксы item_XX
     item_ids = []
     for key in request.form:
-        if key.startswith('item_'):
+        if key.startswith('cat_'):
             val = request.form.get(key)
             if val:
                 item_ids.append(int(val))
@@ -246,7 +244,6 @@ def order():
 
     flash('Заказ успешно создан!')
     return redirect(url_for('student'))
-
 
 @app.route('/buy_subscription', methods=['POST'])
 def buy_subscription():

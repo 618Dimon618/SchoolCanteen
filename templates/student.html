@@ -87,9 +87,9 @@
                             {% endfor %}
 
                             <label class="item {% if is_unavailable %}unavailable{% endif %}" style="display: flex; align-items: flex-start; padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 5px;">
-                                <input type="checkbox" name="item_{{ item.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %} style="width: auto; margin-top: 3px; margin-right: 0;">
+                                <input type="radio" name="cat_{{ category.id }}" value="{{ item.id }}" {% if is_unavailable %}disabled{% endif %} onclick="deselectRadio(this)" style="margin-top: 3px; margin-right: 0;">
                                 <div style="margin-left: 12px; flex: 1;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                                    <div style="display:flex; align-items:center; width:100%;">
                                         <span class="item-name">{{ item.name }}</span>
                                     </div>
                                     <span class="item-price">{{ item.price }} ₽</span>
@@ -220,6 +220,21 @@ window.onclick = function(event) {
     var modal = document.getElementById('paymentModal');
     if (event.target == modal) {
         modal.style.display = "none";
+    }
+}
+
+// Снятие выбора с radio при повторном клике
+function deselectRadio(radio) {
+    if (radio.dataset.wasChecked === 'true') {
+        radio.checked = false;
+        radio.dataset.wasChecked = 'false';
+    } else {
+        // Сбрасываем флаг у всех radio в этой группе
+        var allInGroup = document.querySelectorAll('input[name="' + radio.name + '"]');
+        allInGroup.forEach(function(r) {
+            r.dataset.wasChecked = 'false';
+        });
+        radio.dataset.wasChecked = 'true';
     }
 }
 </script>
