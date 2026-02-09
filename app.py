@@ -595,24 +595,267 @@ def download_report():
     if session.get('role') != 'admin':
         return redirect(url_for('login'))
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Финансы"
-
+    # Сбор данных
     stats = get_payments_stats()
+    order_stats = get_orders_stats()
     expenses = get_expenses()
+    all_requests = get_all_requests()
+    users = User.query.order_by(User.id).all()
+    all_orders = Order.query.order_by(Order.created_at.desc()).all()
+    products = Product.query.order_by(Product.id).all()
+    all_order_items = OrderItem.query.all()
+    menu_items = MenuItem.query.order_by(MenuItem.name).all()
 
-    ws.append(['Тип', 'Сумма'])
-    ws.append(['Абонементы', stats['subscriptions']])
-    ws.append(['Розница', stats['purchases']])
-    ws.append(['Расходы', expenses])
-    ws.append(['Итого чистая', stats['total_income'] - expenses])
+    # Создание книги
+    wb = Workbook()
 
+    # --- СТИЛИ ---
+    # Шрифт заголовков (белый, жирный)
+    header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFF')
+    # Заливка заголовков (синий как на скрине)
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    # Границы (тонкие)
+    thin_border = Side(style='thin')
+    border = Border(left=thin_border, right=thin_border, top=thin_border, bottom=thin_border)
+    # Выравнивание
+    center_align = Alignment(horizontal='center', vertical='center')
+    # Шрифт названий отчетов (жирный, 14pt)
+    title_font = Font(name='Calibri', size=14, bold=True)
+    # Шрифт подзаголовков (жирный)
+    bold_font = Font(name='Calibri', bold=True)
+
+    # Вспомогательная функция для оформления шапки таблицы
+    def style_table_header(ws, row, col_count):
+        for c in range(1, col_count + 1):
+            cell = ws.cell(row=row, column=c)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = center_align
+
+    # ==========================
+    # 1. СВОДКА
+    # ==========================
+    ws1 = wb.active
+    ws1.title = "Сводка"
+
+    # Заголовок
+    ws1['A1'] = "Отчёт по школьной столовой"
+    ws1['A1'].font = title_font
+    ws1['A2'] = "Дата формирования"
+    ws1['B2'] = datetime.now().strftime('%d.%m.%Y %H:%M')
+
+    # Таблица 1: Финансы
+    ws1['A4'] = "Финансовые показатели"
+    ws1['A4'].font = bold_font
+
+    ws1.append(['Показатель', 'Сумма (руб.)'])  # 5 строка
+    style_table_header(ws1, 5, 2)
+
+    data_fin = [
+        ['Доход от абонементов', stats['subscriptions']],
+        ['Доход от покупок', stats['purchases']],
+        ['Общий доход', stats['total_income']],
+        ['Расходы на закупки', expenses],
+        ['Чистая прибыль', stats['total_income'] - expenses]
+    ]
+    for row in data_fin:
+        ws1.append(row)
+
+    # Таблица 2: Заказы
+    ws1['A12'] = "Статистика заказов"
+    ws1['A12'].font = bold_font
+
+    ws1.append(['Показатель', 'Значение'])  # 13 строка
+    style_table_header(ws1, 13, 2)
+
+    b_total = len([o for o in all_orders if o.meal_type == 'breakfast'])
+    l_total = len([o for o in all_orders if o.meal_type == 'lunch'])
+
+    data_ord = [
+        ['Всего заказов', order_stats['total']],
+        ['Заказов за сегодня', order_stats['today']],
+        ['Получено', order_stats['received']],
+        ['Всего завтраков', b_total],
+        ['Всего обедов', l_total]
+    ]
+    for row in data_ord:
+        ws1.append(row)
+
+    ws1.column_dimensions['A'].width = 30
+    ws1.column_dimensions['B'].width = 20
+
+    # ==========================
+    # 2. УЧЁТ ЗАВТРАКОВ
+    # ==========================
+    ws2 = wb.create_sheet("Учёт завтраков")
+    ws2['A1'] = "Учёт завтраков"
+    ws2['A1'].font = title_font
+    ws2['A2'] = f"Всего завтраков:"
+    ws2['B2'] = b_total
+
+    headers_meals = ['№', 'Дата', 'Ученик', 'Класс', 'Блюда', 'Оплата', 'Статус']
+    ws2.append([])  # Пустая строка 3
+    ws2.append(headers_meals)  # Строка 4
+    style_table_header(ws2, 4, 7)
+
+    for o in all_orders:
+        if o.meal_type == 'breakfast':
+            items_str = ", ".join([i.menu_item.name for i in o.items])
+            pay_type = 'Абонемент' if o.is_subscription else 'Разовая'
+            status = 'Получен' if o.is_received else ('Готов' if o.is_prepared else 'Готовится')
+            ws2.append(
+                [o.id, o.date.strftime('%d.%m.%Y'), o.user.full_name or o.user.username, o.user.class_name, items_str,
+                 pay_type, status])
+
+    ws2.column_dimensions['C'].width = 25
+    ws2.column_dimensions['E'].width = 40
+
+    # ==========================
+    # 3. УЧЁТ ОБЕДОВ
+    # ==========================
+    ws3 = wb.create_sheet("Учёт обедов")
+    ws3['A1'] = "Учёт обедов"
+    ws3['A1'].font = title_font
+    ws3['A2'] = f"Всего обедов:"
+    ws3['B2'] = l_total
+
+    ws3.append([])
+    ws3.append(headers_meals)
+    style_table_header(ws3, 4, 7)
+
+    for o in all_orders:
+        if o.meal_type == 'lunch':
+            items_str = ", ".join([i.menu_item.name for i in o.items])
+            pay_type = 'Абонемент' if o.is_subscription else 'Разовая'
+            status = 'Получен' if o.is_received else ('Готов' if o.is_prepared else 'Готовится')
+            ws3.append(
+                [o.id, o.date.strftime('%d.%m.%Y'), o.user.full_name or o.user.username, o.user.class_name, items_str,
+                 pay_type, status])
+
+    ws3.column_dimensions['C'].width = 25
+    ws3.column_dimensions['E'].width = 40
+
+    # ==========================
+    # 4. ВСЕ ЗАКАЗЫ
+    # ==========================
+    ws4 = wb.create_sheet("Все заказы")
+    ws4['A1'] = "Все заказы"
+    ws4['A1'].font = title_font
+
+    headers_all = ['№', 'Дата', 'Ученик', 'Класс', 'Приём пищи', 'Блюда', 'Оплата', 'Статус']
+    ws4.append([])
+    ws4.append(headers_all)  # Строка 3
+    style_table_header(ws4, 3, 8)
+
+    for o in all_orders:
+        meal = 'Завтрак' if o.meal_type == 'breakfast' else 'Обед'
+        items_str = ", ".join([i.menu_item.name for i in o.items])
+        pay_type = 'Абонемент' if o.is_subscription else 'Разовая'
+        status = 'Получен' if o.is_received else ('Готов' if o.is_prepared else 'Готовится')
+        ws4.append(
+            [o.id, o.date.strftime('%d.%m.%Y'), o.user.full_name or o.user.username, o.user.class_name, meal, items_str,
+             pay_type, status])
+
+    ws4.column_dimensions['C'].width = 25
+    ws4.column_dimensions['F'].width = 40
+
+    # ==========================
+    # 5. ЗАЯВКИ НА ЗАКУПКУ
+    # ==========================
+    ws5 = wb.create_sheet("Заявки на закупку")
+    ws5['A1'] = "Заявки на закупку"
+    ws5['A1'].font = title_font
+
+    headers_req = ['Дата', 'Продукт', 'Количество', 'Ед.', 'Сумма (руб.)']
+    ws5.append([])
+    ws5.append(headers_req)  # Строка 3
+    style_table_header(ws5, 3, 5)
+
+    for r in all_requests:
+        summ = round(r.quantity * r.product.price, 2)
+        ws5.append([r.date.strftime('%d.%m.%Y'), r.product.name, r.quantity, r.product.unit, summ])
+
+    ws5.column_dimensions['B'].width = 25
+
+    # ==========================
+    # 6. ПОЛЬЗОВАТЕЛИ
+    # ==========================
+    ws6 = wb.create_sheet("Пользователи")
+    ws6['A1'] = "Пользователи"
+    ws6['A1'].font = title_font
+
+    headers_users = ['ID', 'Логин', 'ФИО', 'Класс', 'Роль']
+    ws6.append([])
+    ws6.append(headers_users)  # Строка 3
+    style_table_header(ws6, 3, 5)
+
+    for u in users:
+        role_map = {'student': 'Ученик', 'cook': 'Повар', 'admin': 'Администратор'}
+        ws6.append([u.id, u.username, u.full_name, u.class_name, role_map.get(u.role, u.role)])
+
+    ws6.column_dimensions['C'].width = 30
+
+    # ==========================
+    # 7. ПРОДУКТЫ (СКЛАД)
+    # ==========================
+    ws7 = wb.create_sheet("Продукты")
+    ws7['A1'] = "Продукты"
+    ws7['A1'].font = title_font
+
+    headers_prod = ['ID продукта', 'Название', 'Остаток', 'Ед. измерения']
+    ws7.append([])
+    ws7.append(headers_prod)  # Строка 3
+    style_table_header(ws7, 3, 4)
+
+    for p in products:
+        ws7.append([p.id, p.name, p.quantity, p.unit])
+
+    ws7.column_dimensions['B'].width = 25
+
+    # ==========================
+    # 8. ПРИГОТОВЛЕННЫЕ БЛЮДА
+    # ==========================
+    ws8 = wb.create_sheet("Приготовленные блюда")
+    ws8['A1'] = "Приготовленные блюда"
+    ws8['A1'].font = title_font
+
+    headers_cooked = ['ID позиции', 'ID заказа', 'ID блюда', 'Блюдо']
+    ws8.append([])
+    ws8.append(headers_cooked)  # Строка 3
+    style_table_header(ws8, 3, 4)
+
+    for oi in all_order_items:
+        ws8.append([oi.id, oi.order_id, oi.menu_item_id, oi.menu_item.name])
+
+    ws8.column_dimensions['D'].width = 30
+
+    # ==========================
+    # 9. СВЯЗЬ БЛЮД И ПРОДУКТОВ
+    # ==========================
+    ws9 = wb.create_sheet("Связь блюд и продуктов")
+    ws9['A1'] = "Связь блюд и продуктов"
+    ws9['A1'].font = title_font
+
+    headers_link = ['ID блюда', 'Блюдо', 'ID продукта', 'Продукт']
+    ws9.append([])
+    ws9.append(headers_link)  # Строка 3
+    style_table_header(ws9, 3, 4)
+
+    for item in menu_items:
+        ings = MenuItemIngredient.query.filter_by(menu_item_id=item.id).all()
+        for ing in ings:
+            ws9.append([item.id, item.name, ing.product_id, ing.product.name])
+
+    ws9.column_dimensions['B'].width = 25
+    ws9.column_dimensions['D'].width = 25
+
+    # Сохранение в память
     output = BytesIO()
     wb.save(output)
     output.seek(0)
 
-    return send_file(output, download_name='report.xlsx', as_attachment=True)
+    return send_file(output, download_name='school_canteen_report.xlsx', as_attachment=True)
 
 
 if __name__ == '__main__':
