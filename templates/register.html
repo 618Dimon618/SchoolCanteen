@@ -6,8 +6,8 @@
 
     <form method="POST">
         <div style="text-align: left; margin-bottom: 15px;">
-            <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Логин (Username)</label>
-            <input type="text" name="username" required placeholder="Придумайте логин">
+            <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Электронная почта</label>
+            <input type="text" name="email" required placeholder="example@school.ru">
         </div>
 
         <div style="text-align: left; margin-bottom: 15px;">
@@ -24,11 +24,6 @@
                 <label style="font-weight: 600; font-size: 12px; color: #3f4254; display: block; margin-bottom: 5px;">Класс</label>
                 <input type="text" name="class_name" placeholder="9А">
             </div>
-        </div>
-
-        <div style="background: #fff8dd; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px dashed #ffc700; text-align: left;">
-            <label style="display: block; font-size: 13px; margin-bottom: 8px; font-weight: 700; color: #b58d00;">Проверка безопасности: {{ captcha_a }} + {{ captcha_b }}</label>
-            <input type="number" name="captcha_answer" required placeholder="Сумма" style="width: 100%;">
         </div>
 
         <button type="submit" style="width: 100%; margin-top: 10px;">Зарегистрироваться</button>
