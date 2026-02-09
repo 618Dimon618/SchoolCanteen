@@ -18,15 +18,15 @@
                 <a href="{{ url_for('student') }}">МЕНЮ</a>
                 <a href="{{ url_for('profile') }}">ПРОФИЛЬ</a>
                 <a href="{{ url_for('reviews') }}">ОТЗЫВЫ</a>
-                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ {% if unread_count %}({{ unread_count }}){% endif %}</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ{% if unread_count %} <span style="background:#f1416c; color:white; font-size:11px; font-weight:700; padding:2px 7px; border-radius:50px; margin-left:5px;">{{ unread_count }}</span>{% endif %}</a>
             {% elif session.get('role') == 'cook' %}
                 <a href="{{ url_for('cook') }}">ЗАКАЗЫ</a>
                 <a href="{{ url_for('cook_dishes') }}">БЛЮДА</a>
                 <a href="{{ url_for('cook_issued') }}">ВЫДАЧА</a>
-                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ{% if unread_count %} <span style="background:#f1416c; color:white; font-size:11px; font-weight:700; padding:2px 7px; border-radius:50px; margin-left:5px;">{{ unread_count }}</span>{% endif %}</a>
             {% elif session.get('role') == 'admin' %}
                 <a href="{{ url_for('admin') }}">УПРАВЛЕНИЕ</a>
-                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ</a>
+                <a href="{{ url_for('notifications') }}">УВЕДОМЛЕНИЯ{% if unread_count %} <span style="background:#f1416c; color:white; font-size:11px; font-weight:700; padding:2px 7px; border-radius:50px; margin-left:5px;">{{ unread_count }}</span>{% endif %}</a>
             {% endif %}
         </div>
 
